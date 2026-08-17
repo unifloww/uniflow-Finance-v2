@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/webp" href="https://firebasestorage.googleapis.com/v0/b/uniflow/o/Favicon%20Uniflow.webp?alt=media&token=929511a5-b54a-463c-a5e2-30eef7e0851c" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#059669" />
+    <link rel="apple-touch-icon" href="https://firebasestorage.googleapis.com/v0/b/uniflow/o/Favicon%20Uniflow.webp?alt=media&token=929511a5-b54a-463c-a5e2-30eef7e0851c" />
+    <title>UniFlow Finance - Atur Keuangan Anda</title>
+    <meta name="description" content="Aplikasi pencatatan dan pengelolaan keuangan terbaik." />
+    <meta property="og:title" content="UniFlow Finance" />
+    <meta property="og:description" content="Aplikasi pencatatan dan pengelolaan keuangan terbaik." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="text/javascript" src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="Mid-client-dvk7Kr5qta3e3UHy"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((error) => {
+            console.error('Service Worker registration failed:', error);
+          });
+        });
+      }
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
