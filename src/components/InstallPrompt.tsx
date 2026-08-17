@@ -22,7 +22,9 @@ export function InstallPrompt() {
 
     // Check if device is iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+    const isIOSDevice = 
+      /iphone|ipad|ipod/.test(userAgent) ||
+      (userAgent.includes("mac") && "ontouchend" in document);
     setIsIOS(isIOSDevice);
 
     // Standard PWA install event for Android/Chrome/Edge

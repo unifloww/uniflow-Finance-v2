@@ -1,4 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { auth, db } from '../lib/firebase';
+import { 
+  onAuthStateChanged, 
+  signOut, 
+  User as FirebaseUser
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export interface UserProfile {
   id: string;
@@ -28,37 +35,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check localStorage for a saved user
-    const savedUser = localStorage.getItem('uniflow_user');
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        setCurrentUser({ uid: parsed.id, email: parsed.email });
-        setUserProfile(parsed);
-      } catch (e) {
-        localStorage.removeItem('uniflow_user');
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser({ uid: user.uid, email: user.email || '' });
+        
+        // Fetch profile from Firestore
+        const docRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          setUserProfile(docSnap.data() as UserProfile);
+        } else {
+          // If profile doesn't exist, create a default one
+          const newProfile: UserProfile = {
+            id: user.uid,
+            email: user.email || '',
+            name: user.displayName || 'User',
+            role: 'user',
+            status: 'active',
+            plan: 'trial',
+            createdAt: new Date().toISOString()
+          };
+          await setDoc(docRef, newProfile);
+          setUserProfile(newProfile);
+        }
+      } else {
+        setCurrentUser(null);
+        setUserProfile(null);
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    });
+
+    return unsubscribe;
   }, []);
 
   const logout = async () => {
-    localStorage.removeItem('uniflow_user');
-    setCurrentUser(null);
-    setUserProfile(null);
+    await signOut(auth);
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
-    if (!userProfile) return;
+    if (!currentUser || !userProfile) return;
+    
     const updatedProfile = { ...userProfile, ...data };
     setUserProfile(updatedProfile);
-    localStorage.setItem('uniflow_user', JSON.stringify(updatedProfile));
     
-    // Simpan ke database lokal agar persisten saat re-login
-    const dbStr = localStorage.getItem('uniflow_users_db');
-    const db = dbStr ? JSON.parse(dbStr) : {};
-    db[updatedProfile.email] = updatedProfile;
-    localStorage.setItem('uniflow_users_db', JSON.stringify(db));
+    const docRef = doc(db, 'users', currentUser.uid);
+    await setDoc(docRef, updatedProfile, { merge: true });
   };
 
   return (
@@ -75,4 +97,3 @@ export function useAuth() {
   }
   return context;
 }
-

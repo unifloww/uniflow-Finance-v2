@@ -141,6 +141,10 @@ export function LandingPage() {
   ];
 
   const handleSubscribe = async (planId: string, price: number, planName: string) => {
+    if (!currentUser) {
+      navigate('/register');
+      return;
+    }
     try {
       setIsProcessing(true);
       const res = await fetch("/api/payment/token", {

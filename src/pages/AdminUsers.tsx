@@ -25,38 +25,30 @@ export function AdminUsers() {
     }
   }, [searchParams]);
 
-  const loadUsers = () => {
-    const dbStr = localStorage.getItem("uniflow_users_db");
-    const db = dbStr ? JSON.parse(dbStr) : {};
-    
-    const enrichedUsers: EnrichedUser[] = Object.values(db).map((u: any) => {
-       const txData = localStorage.getItem(`uniflow_transactions_${u.id}`);
-       const txs = txData ? JSON.parse(txData) : [];
-       
-       let totalBalance = 0;
-       let highestExpense = 0;
-       
-       txs.forEach((tx: any) => {
-         if (tx.type === 'income') {
-            totalBalance += tx.amount;
-         } else if (tx.type === 'expense') {
-            totalBalance -= tx.amount;
-            if (tx.amount > highestExpense) {
-               highestExpense = tx.amount;
-            }
-         }
-       });
-       
-       return {
-         ...u,
-         totalBalance,
-         highestExpense,
-         totalTransactions: txs.length
-       };
-    });
-    
-    setUsers(enrichedUsers);
+  
+  const loadUsers = async () => {
+    try {
+      const { collection, getDocs } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      
+      const querySnapshot = await getDocs(collection(db, "users"));
+      const enrichedUsers = [];
+      
+      querySnapshot.forEach((doc) => {
+        const u = doc.data();
+        enrichedUsers.push({
+          ...u,
+          totalBalance: 0, // Mock for now to save reads, or calculate if needed
+          highestExpense: 0,
+          totalTransactions: 0
+        });
+      });
+      setUsers(enrichedUsers);
+    } catch (e) {
+      console.error(e);
+    }
   };
+
 
   useEffect(() => {
     loadUsers();
@@ -193,7 +185,7 @@ export function AdminUsers() {
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
-                <tr key={user.email} className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <tr key={user.id} className="bg-white dark:bg-slate-900 border-b dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center font-bold text-lg">
@@ -202,6 +194,7 @@ export function AdminUsers() {
                       <div>
                         <div className="font-bold text-slate-900 dark:text-white text-base">{user.name}</div>
                         <div className="text-xs text-slate-500">{user.email}</div>
+                        {user.phone && <div className="text-xs text-slate-400 mt-0.5">📞 {user.phone}</div>}
                       </div>
                     </div>
                   </td>
@@ -240,21 +233,21 @@ export function AdminUsers() {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => handleToggleRole(user.email, user.role || 'user')}
+                        onClick={() => handleToggleRole(user.id, user.role || 'user')}
                         title="Ubah Role"
                         className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors"
                       >
                         <Shield className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleToggleStatus(user.email, user.status || 'active')}
+                        onClick={() => handleToggleStatus(user.id, user.status || 'active')}
                         title={user.status === 'active' ? 'Suspend' : 'Aktifkan'}
                         className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-full transition-colors"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => setUserToDelete(user.email)}
+                        onClick={() => setUserToDelete(user.id)}
                         title="Hapus"
                         className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-full transition-colors"
                       >

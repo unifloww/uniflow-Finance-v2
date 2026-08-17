@@ -6,12 +6,17 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
 import { motion } from "motion/react";
+
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { setDoc } from "firebase/firestore";
+
+import { auth, db } from "../lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -21,50 +26,87 @@ export function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  
+  const handleGoogleLogin = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      
+      // Check if user exists in firestore
+      const docRef = doc(db, 'users', userCredential.user.uid);
+      const docSnap = await getDoc(docRef);
+      
+      let role = 'user';
+      if (!docSnap.exists()) {
+        // Create new user profile if first time
+        const newProfile = {
+          id: userCredential.user.uid,
+          email: userCredential.user.email || '',
+          name: userCredential.user.displayName || 'User',
+          phone: userCredential.user.phoneNumber || '',
+          role: userCredential.user.email === "fitopatner@gmail.com" ? "superadmin" : "user",
+          status: "active",
+          plan: "trial",
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(docRef, newProfile);
+      } else {
+        role = docSnap.data().role || 'user';
+        // Ensure phone number is updated if it wasn't there but we have it now
+        if (userCredential.user.phoneNumber && !docSnap.data().phone) {
+           await setDoc(docRef, { phone: userCredential.user.phoneNumber }, { merge: true });
+        }
+      }
+
+      if (role === 'superadmin') {
+        window.location.href = "/admin/dashboard";
+      } else {
+        window.location.href = "/dashboard";
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("Gagal login dengan Google: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      // Simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       
-      const dbStr = localStorage.getItem("uniflow_users_db");
-      const db = dbStr ? JSON.parse(dbStr) : {};
+      // Get role
+      const docRef = doc(db, 'users', userCredential.user.uid);
+      const docSnap = await getDoc(docRef);
       
-      if (email === "fitopatner@gmail.com" && password !== "Fito180199") {
-        throw new Error("Password salah untuk akun Super Admin.");
+      let role = 'user';
+      if (docSnap.exists()) {
+        role = docSnap.data().role;
+        // Auto-upgrade if it's the owner's email but not superadmin yet
+        if (email === "fitopatner@gmail.com" && role !== "superadmin") {
+          role = "superadmin";
+          await setDoc(docRef, { role: "superadmin" }, { merge: true });
+        }
       }
 
-      let mockUser = db[email];
-      
-      if (!mockUser) {
-        mockUser = {
-          id: email, // Use email as ID for simple mock
-          email: email,
-          name: email.split("@")[0],
-          role: email === "fitopatner@gmail.com" ? "superadmin" : "user",
-          status: "active" as const,
-        };
-        db[email] = mockUser;
-        localStorage.setItem("uniflow_users_db", JSON.stringify(db));
-      }
-
-      if (email === "fitopatner@gmail.com") {
-        mockUser.role = "superadmin";
-        db[email] = mockUser;
-        localStorage.setItem("uniflow_users_db", JSON.stringify(db));
-      }
-
-      localStorage.setItem("uniflow_user", JSON.stringify(mockUser));
-      if (mockUser.role === "superadmin") {
+      if (role === 'superadmin') {
         window.location.href = "/admin/dashboard";
       } else {
         window.location.href = "/dashboard";
       }
     } catch (err: any) {
-      setError(err.message || "Gagal login. Periksa kembali email dan password Anda.");
+      console.error(err);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError("Email atau password salah. Pastikan Anda sudah mendaftar.");
+      } else {
+        setError("Terjadi kesalahan saat login: " + err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -110,7 +152,7 @@ export function Login() {
             <CardTitle className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-200">
               Selamat Datang
             </CardTitle>
-            <CardDescription className="text-slate-500 dark:text-slate-400 dark:text-slate-500">
+            <CardDescription className="text-slate-500 dark:text-slate-400">
               Atur Dana, Capai Impian. Silakan login ke akun Anda.
             </CardDescription>
           </CardHeader>
@@ -146,12 +188,6 @@ export function Login() {
                   >
                     Password
                   </label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-sm text-[#059669] hover:text-[#047857] font-medium transition-colors"
-                  >
-                    Lupa password?
-                  </Link>
                 </div>
                 <div className="relative">
                   <Input
@@ -182,10 +218,49 @@ export function Login() {
               >
                 {loading ? "Memproses..." : "Masuk ke Dashboard"}
               </Button>
+            
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white dark:bg-slate-900 px-2 text-slate-500">
+                    Atau lanjutkan dengan
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                >
+                  <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+                    <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
+                  </svg>
+                  Google
+                </Button>
+                <Link to="/phone-login" className="w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    disabled={loading}
+                  >
+                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                    Nomor HP
+                  </Button>
+                </Link>
+              </div>
+
             </form>
           </CardContent>
           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 text-center border-t border-slate-100 dark:border-slate-800">
-            <p className="text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Belum punya akun?{" "}
               <Link
                 to="/register"

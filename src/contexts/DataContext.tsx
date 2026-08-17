@@ -1,12 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
+import { db } from '../lib/firebase';
+import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 
 export interface Account {
   id: string;
   name: string;
-  type: 'bank' | 'wallet' | 'cash';
+  type: 'bank' | 'wallet' | 'cash' | 'investment';
   provider?: string;
   balance: number;
+  user_id?: string;
 }
 
 export interface Transaction {
@@ -17,6 +20,7 @@ export interface Transaction {
   category: string;
   description: string;
   date: string;
+  user_id?: string;
 }
 
 export interface Goal {
@@ -25,13 +29,15 @@ export interface Goal {
   target: number;
   current: number;
   deadline: string;
+  user_id?: string;
 }
 
 export interface Budget {
   id: string;
   category: string;
   amount: number;
-  period: string; // e.g., '2026-08'
+  period: string;
+  user_id?: string;
 }
 
 interface DataContextType {
@@ -39,17 +45,17 @@ interface DataContextType {
   transactions: Transaction[];
   goals: Goal[];
   budgets: Budget[];
-  addAccount: (account: Omit<Account, 'id'>) => void;
-  editAccount: (id: string, data: Partial<Account>) => void;
-  deleteAccount: (id: string) => void;
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
-  deleteTransaction: (id: string) => void;
-  addGoal: (goal: Omit<Goal, 'id'>) => void;
-  editGoal: (id: string, goal: Partial<Goal>) => void;
-  deleteGoal: (id: string) => void;
-  addBudget: (budget: Omit<Budget, 'id'>) => void;
-  editBudget: (id: string, budget: Partial<Budget>) => void;
-  deleteBudget: (id: string) => void;
+  addAccount: (account: Omit<Account, 'id'>) => Promise<void>;
+  editAccount: (id: string, data: Partial<Account>) => Promise<void>;
+  deleteAccount: (id: string) => Promise<void>;
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  addGoal: (goal: Omit<Goal, 'id'>) => Promise<void>;
+  editGoal: (id: string, goal: Partial<Goal>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
+  addBudget: (budget: Omit<Budget, 'id'>) => Promise<void>;
+  editBudget: (id: string, budget: Partial<Budget>) => Promise<void>;
+  deleteBudget: (id: string) => Promise<void>;
   isLoaded: boolean;
   syncStatus: 'synced' | 'syncing' | 'offline';
   hideBalances: boolean;
@@ -59,24 +65,6 @@ interface DataContextType {
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
-
-const initialAccounts: Account[] = [
-  { id: '1', name: 'BCA Utama', type: 'bank', provider: 'bca', balance: 15000000 },
-  { id: '2', name: 'GoPay', type: 'wallet', provider: 'gopay', balance: 500000 },
-];
-
-const initialTransactions: Transaction[] = [
-  { id: '1', accountId: '1', type: 'income', amount: 10000000, category: 'Gaji', description: 'Gaji Bulanan', date: new Date().toISOString() },
-  { id: '2', accountId: '2', type: 'expense', amount: 150000, category: 'Makanan', description: 'Makan siang', date: new Date().toISOString() },
-];
-
-const initialGoals: Goal[] = [
-  { id: '1', name: 'Liburan Jepang', target: 20000000, current: 5000000, deadline: '2027-12-31' },
-];
-
-const initialBudgets: Budget[] = [
-  { id: '1', category: 'Makanan & Minuman', amount: 3000000, period: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}` }
-];
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
@@ -93,7 +81,6 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [hideBalances, setHideBalances] = useState(() => {
     return localStorage.getItem('uniflow_hide_balances') === 'true';
   });
-
   const [displayCurrency, setDisplayCurrencyState] = useState<'IDR' | 'USD'>(() => {
     return (localStorage.getItem('uniflow_currency') as 'IDR' | 'USD') || 'IDR';
   });
@@ -112,140 +99,170 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const handleOnline = () => {
-      setSyncStatus('syncing');
-      setTimeout(() => setSyncStatus('synced'), 800);
-    };
+    const handleOnline = () => setSyncStatus('synced');
     const handleOffline = () => setSyncStatus('offline');
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  const triggerSync = () => {
-    if (!navigator.onLine) return;
-    setSyncStatus('syncing');
-    setTimeout(() => setSyncStatus('synced'), 600); // Simulate network latency
-  };
-
-  // Load from local storage
   useEffect(() => {
-    if (!currentUser) return;
-    
+    if (!currentUser) {
+      setAccounts([]);
+      setTransactions([]);
+      setGoals([]);
+      setBudgets([]);
+      setIsLoaded(true);
+      return;
+    }
+
     setIsLoaded(false);
-    const accountsData = localStorage.getItem(`uniflow_accounts_${currentUser.uid}`);
-    const transactionsData = localStorage.getItem(`uniflow_transactions_${currentUser.uid}`);
-    const goalsData = localStorage.getItem(`uniflow_goals_${currentUser.uid}`);
-    const budgetsData = localStorage.getItem(`uniflow_budgets_${currentUser.uid}`);
+    setSyncStatus('syncing');
 
-    if (accountsData) setAccounts(JSON.parse(accountsData));
-    else setAccounts(initialAccounts);
+    const unsubscribeAccounts = onSnapshot(query(collection(db, 'accounts'), where('user_id', '==', currentUser.uid)), (snapshot) => {
+      setAccounts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account)));
+    });
 
-    if (transactionsData) setTransactions(JSON.parse(transactionsData));
-    else setTransactions(initialTransactions);
+    const unsubscribeTransactions = onSnapshot(query(collection(db, 'transactions'), where('user_id', '==', currentUser.uid)), (snapshot) => {
+      setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    });
 
-    if (goalsData) setGoals(JSON.parse(goalsData));
-    else setGoals(initialGoals);
+    const unsubscribeGoals = onSnapshot(query(collection(db, 'goals'), where('user_id', '==', currentUser.uid)), (snapshot) => {
+      setGoals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Goal)));
+    });
     
-    if (budgetsData) setBudgets(JSON.parse(budgetsData));
-    else setBudgets(initialBudgets);
-    
-    setIsLoaded(true);
+    const unsubscribeBudgets = onSnapshot(query(collection(db, 'budgets'), where('user_id', '==', currentUser.uid)), (snapshot) => {
+      setBudgets(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Budget)));
+    });
+
+    setTimeout(() => {
+      setIsLoaded(true);
+      setSyncStatus('synced');
+    }, 1000);
+
+    return () => {
+      unsubscribeAccounts();
+      unsubscribeTransactions();
+      unsubscribeGoals();
+      unsubscribeBudgets();
+    };
   }, [currentUser]);
 
-  // Save to local storage when state changes
-  useEffect(() => {
-    if (!currentUser || !isLoaded) return;
-    localStorage.setItem(`uniflow_accounts_${currentUser.uid}`, JSON.stringify(accounts));
-    triggerSync();
-  }, [accounts, currentUser, isLoaded]);
-
-  useEffect(() => {
-    if (!currentUser || !isLoaded) return;
-    localStorage.setItem(`uniflow_transactions_${currentUser.uid}`, JSON.stringify(transactions));
-    triggerSync();
-  }, [transactions, currentUser, isLoaded]);
-
-  useEffect(() => {
-    if (!currentUser || !isLoaded) return;
-    localStorage.setItem(`uniflow_goals_${currentUser.uid}`, JSON.stringify(goals));
-    triggerSync();
-  }, [goals, currentUser, isLoaded]);
-
-  useEffect(() => {
-    if (!currentUser || !isLoaded) return;
-    localStorage.setItem(`uniflow_budgets_${currentUser.uid}`, JSON.stringify(budgets));
-    triggerSync();
-  }, [budgets, currentUser, isLoaded]);
-
-  const addAccount = (account: Omit<Account, 'id'>) => {
-    setAccounts([...accounts, { ...account, id: crypto.randomUUID() }]);
+  const addAccount = async (account: Omit<Account, 'id'>) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    const newRef = doc(collection(db, 'accounts'));
+    await setDoc(newRef, { ...account, user_id: currentUser.uid });
+    setSyncStatus('synced');
   };
 
-  const editAccount = (id: string, updatedData: Partial<Account>) => {
-    setAccounts(accounts.map(acc => acc.id === id ? { ...acc, ...updatedData } : acc));
+  const editAccount = async (id: string, updatedData: Partial<Account>) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    await setDoc(doc(db, 'accounts', id), updatedData, { merge: true });
+    setSyncStatus('synced');
   };
 
-  const deleteAccount = (id: string) => {
-    setAccounts(accounts.filter(acc => acc.id !== id));
+  const deleteAccount = async (id: string) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    await deleteDoc(doc(db, 'accounts', id));
+    setSyncStatus('synced');
   };
 
-  const addTransaction = (tx: Omit<Transaction, 'id'>) => {
-    setTransactions([ { ...tx, id: crypto.randomUUID() }, ...transactions]);
+  const addTransaction = async (tx: Omit<Transaction, 'id'>) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    
+    const batch = writeBatch(db);
+    
+    // Create transaction
+    const newTxRef = doc(collection(db, 'transactions'));
+    batch.set(newTxRef, { ...tx, user_id: currentUser.uid });
     
     // Update account balance
-    setAccounts(accounts.map(acc => {
-      if (acc.id === tx.accountId) {
-        if (tx.type === 'income') return { ...acc, balance: acc.balance + tx.amount };
-        if (tx.type === 'expense') return { ...acc, balance: acc.balance - tx.amount };
-      }
-      return acc;
-    }));
+    const acc = accounts.find(a => a.id === tx.accountId);
+    if (acc) {
+      let newBalance = acc.balance;
+      if (tx.type === 'income') newBalance += tx.amount;
+      if (tx.type === 'expense') newBalance -= tx.amount;
+      
+      const accRef = doc(db, 'accounts', acc.id);
+      batch.update(accRef, { balance: newBalance });
+    }
+    
+    await batch.commit();
+    setSyncStatus('synced');
   };
 
-  const deleteTransaction = (id: string) => {
+  const deleteTransaction = async (id: string) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    
     const tx = transactions.find(t => t.id === id);
     if (!tx) return;
+
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'transactions', id));
     
-    // Revert account balance
-    setAccounts(accounts.map(acc => {
-      if (acc.id === tx.accountId) {
-        if (tx.type === 'income') return { ...acc, balance: acc.balance - tx.amount };
-        if (tx.type === 'expense') return { ...acc, balance: acc.balance + tx.amount };
-      }
-      return acc;
-    }));
-    
-    setTransactions(transactions.filter(t => t.id !== id));
+    const acc = accounts.find(a => a.id === tx.accountId);
+    if (acc) {
+      let newBalance = acc.balance;
+      if (tx.type === 'income') newBalance -= tx.amount;
+      if (tx.type === 'expense') newBalance += tx.amount;
+      
+      batch.update(doc(db, 'accounts', acc.id), { balance: newBalance });
+    }
+
+    await batch.commit();
+    setSyncStatus('synced');
   }
 
-  const addGoal = (goal: Omit<Goal, 'id'>) => {
-    setGoals([...goals, { ...goal, id: crypto.randomUUID() }]);
+  const addGoal = async (goal: Omit<Goal, 'id'>) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    const newRef = doc(collection(db, 'goals'));
+    await setDoc(newRef, { ...goal, user_id: currentUser.uid });
+    setSyncStatus('synced');
   };
 
-  const editGoal = (id: string, updatedData: Partial<Goal>) => {
-    setGoals(goals.map(g => g.id === id ? { ...g, ...updatedData } : g));
+  const editGoal = async (id: string, updatedData: Partial<Goal>) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    await setDoc(doc(db, 'goals', id), updatedData, { merge: true });
+    setSyncStatus('synced');
   };
 
-  const deleteGoal = (id: string) => {
-    setGoals(goals.filter(g => g.id !== id));
+  const deleteGoal = async (id: string) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    await deleteDoc(doc(db, 'goals', id));
+    setSyncStatus('synced');
   };
 
-  const addBudget = (budget: Omit<Budget, 'id'>) => {
-    setBudgets([...budgets, { ...budget, id: crypto.randomUUID() }]);
+  const addBudget = async (budget: Omit<Budget, 'id'>) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    const newRef = doc(collection(db, 'budgets'));
+    await setDoc(newRef, { ...budget, user_id: currentUser.uid });
+    setSyncStatus('synced');
   };
 
-  const editBudget = (id: string, updatedData: Partial<Budget>) => {
-    setBudgets(budgets.map(b => b.id === id ? { ...b, ...updatedData } : b));
+  const editBudget = async (id: string, updatedData: Partial<Budget>) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    await setDoc(doc(db, 'budgets', id), updatedData, { merge: true });
+    setSyncStatus('synced');
   };
 
-  const deleteBudget = (id: string) => {
-    setBudgets(budgets.filter(b => b.id !== id));
+  const deleteBudget = async (id: string) => {
+    if (!currentUser) return;
+    setSyncStatus('syncing');
+    await deleteDoc(doc(db, 'budgets', id));
+    setSyncStatus('synced');
   };
 
   return (

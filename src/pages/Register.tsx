@@ -6,15 +6,21 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
 import { motion } from "motion/react";
 
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { getDoc } from "firebase/firestore";
+
+import { auth, db } from "../lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
+
 export function Register() {
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -22,34 +28,77 @@ export function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  
+  const handleGoogleLogin = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      
+      const docRef = doc(db, 'users', userCredential.user.uid);
+      const docSnap = await getDoc(docRef);
+      
+      if (!docSnap.exists()) {
+        const newProfile = {
+          id: userCredential.user.uid,
+          email: userCredential.user.email || '',
+          name: userCredential.user.displayName || 'User',
+          phone: userCredential.user.phoneNumber || '',
+          role: email === "fitopatner@gmail.com" ? "superadmin" : "user",
+          status: "active",
+          plan: "trial",
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(docRef, newProfile);
+      } else {
+        if (userCredential.user.phoneNumber && !docSnap.data().phone) {
+           await setDoc(docRef, { phone: userCredential.user.phoneNumber }, { merge: true });
+        }
+      }
+
+      navigate("/dashboard");
+    } catch (err: any) {
+      console.error(err);
+      setError("Gagal mendaftar dengan Google: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      // Simulate network request
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      const mockUser = {
-        id: email, // Use email as mock ID
+      // Register logic with Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Store user profile in Firestore
+      const newProfile = {
+        id: userCredential.user.uid,
         email: email,
         name: name,
-        role: "user" as const,
-        status: "active" as const,
-        plan: "trial" as const,
-        createdAt: new Date().toISOString(),
+        phone: phone,
+        role: userCredential.user.email === "fitopatner@gmail.com" ? "superadmin" : "user",
+          status: "active",
+        plan: "trial",
+        createdAt: new Date().toISOString()
       };
       
-      const dbStr = localStorage.getItem("uniflow_users_db");
-      const db = dbStr ? JSON.parse(dbStr) : {};
-      db[email] = mockUser;
-      localStorage.setItem("uniflow_users_db", JSON.stringify(db));
-
-      localStorage.setItem("uniflow_user", JSON.stringify(mockUser));
-      window.location.href = "/dashboard";
+      await setDoc(doc(db, 'users', userCredential.user.uid), newProfile);
+      
+      navigate("/dashboard");
     } catch (err: any) {
-      setError("Gagal mendaftar. Silakan coba lagi.");
+      console.error(err);
+      if (err.code === 'auth/email-already-in-use') {
+        setError("Email ini sudah terdaftar. Silakan gunakan email lain atau login.");
+      } else if (err.code === 'auth/weak-password') {
+        setError("Password terlalu lemah, minimal 6 karakter.");
+      } else {
+        setError("Gagal mendaftar: " + err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -93,10 +142,10 @@ export function Register() {
         <Card className="w-full bg-white dark:bg-slate-900/95 backdrop-blur-sm rounded-[2rem] shadow-2xl border-0 overflow-hidden">
           <CardHeader className="space-y-1 text-center pt-8">
             <CardTitle className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-200">
-              Daftar Akun Baru
+              Buat Akun Baru
             </CardTitle>
-            <CardDescription className="text-slate-500 dark:text-slate-400 dark:text-slate-500">
-              Buat akun untuk mulai mengatur keuangan Anda.
+            <CardDescription className="text-slate-500 dark:text-slate-400">
+              Mulai perjalanan finansial Anda bersama UniFlow
             </CardDescription>
           </CardHeader>
           <CardContent className="pb-8">
@@ -106,6 +155,7 @@ export function Register() {
                   {error}
                 </motion.div>
               )}
+              
               <div className="space-y-2">
                 <label
                   htmlFor="name"
@@ -123,6 +173,25 @@ export function Register() {
                   className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-6"
                 />
               </div>
+
+              
+              <div className="space-y-2">
+                <label
+                  htmlFor="phone"
+                  className="text-sm font-semibold leading-none text-slate-700 dark:text-slate-300"
+                >
+                  Nomor HP/WhatsApp
+                </label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="08123456789"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-6"
+                />
+              </div>
+
               <div className="space-y-2">
                 <label
                   htmlFor="email"
@@ -140,6 +209,7 @@ export function Register() {
                   className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl px-4 py-6"
                 />
               </div>
+
               <div className="space-y-2">
                 <label
                   htmlFor="password"
@@ -169,7 +239,9 @@ export function Register() {
                     )}
                   </button>
                 </div>
+                <p className="text-xs text-slate-500 mt-1">Minimal 6 karakter</p>
               </div>
+
               <Button
                 type="submit"
                 className="w-full bg-[#059669] hover:bg-[#047857] text-white shadow-lg shadow-emerald-900/20 rounded-xl py-6 text-base font-semibold transition-all hover:shadow-xl hover:-translate-y-0.5"
@@ -177,10 +249,49 @@ export function Register() {
               >
                 {loading ? "Memproses..." : "Daftar Sekarang"}
               </Button>
+            
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-200 dark:border-slate-700" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white dark:bg-slate-900 px-2 text-slate-500">
+                    Atau lanjutkan dengan
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  onClick={handleGoogleLogin}
+                  disabled={loading}
+                >
+                  <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
+                    <path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 123 24.5 166.3 64.9l-67.5 64.9C258.5 52.6 94.3 116.6 94.3 256c0 86.5 69.1 156.6 153.7 156.6 98.2 0 135-70.4 140.8-106.9H248v-85.3h236.1c2.3 12.7 3.9 24.9 3.9 41.4z"></path>
+                  </svg>
+                  Google
+                </Button>
+                <Link to="/phone-login" className="w-full">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    disabled={loading}
+                  >
+                    <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                    </svg>
+                    Nomor HP
+                  </Button>
+                </Link>
+              </div>
+
             </form>
           </CardContent>
           <div className="bg-slate-50 dark:bg-slate-800/50 p-4 text-center border-t border-slate-100 dark:border-slate-800">
-            <p className="text-sm text-slate-600 dark:text-slate-400 dark:text-slate-500">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Sudah punya akun?{" "}
               <Link
                 to="/login"

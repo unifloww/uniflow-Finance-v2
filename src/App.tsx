@@ -14,6 +14,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { DataProvider } from "./contexts/DataContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Login } from "./pages/Login";
+import { PhoneLogin } from "./pages/PhoneLogin";
 import { Register } from "./pages/Register";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { UserLayout } from "./components/UserLayout";
@@ -43,6 +44,7 @@ export default function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/phone-login" element={<PhoneLogin />} />
               <Route path="/register" element={<Register />} />
 
               {/* User Routes */}

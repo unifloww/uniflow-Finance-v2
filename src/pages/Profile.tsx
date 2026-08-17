@@ -4,7 +4,7 @@ import { useData } from "../contexts/DataContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { User, Phone, Mail, ShieldCheck, CheckCircle2, Crown, Star, ArrowRight, Check, DollarSign } from "lucide-react";
+import { User, Phone, Mail, ShieldCheck, CheckCircle2, Crown, Star, ArrowRight, Check, DollarSign, Clock, Eye, EyeOff } from "lucide-react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 
@@ -16,9 +16,101 @@ export function Profile() {
   const [name, setName] = useState(userProfile?.name || "");
   const [phone, setPhone] = useState(userProfile?.phone || "");
   const [isSaving, setIsSaving] = useState(false);
+
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess(false);
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Password tidak cocok.");
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+       setPasswordError("Password minimal 6 karakter.");
+       return;
+    }
+
+    try {
+      setIsSaving(true);
+      const { updatePassword } = await import('firebase/auth');
+      const { auth } = await import('../lib/firebase');
+      
+      const user = auth.currentUser;
+      if (user) {
+        await updatePassword(user, newPassword);
+        setPasswordSuccess(true);
+        setNewPassword("");
+        setConfirmPassword("");
+        setTimeout(() => setPasswordSuccess(false), 3000);
+      } else {
+        setPasswordError("Sesi telah berakhir, silakan login ulang.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/requires-recent-login') {
+         setPasswordError("Silakan logout dan login ulang untuk mengubah password.");
+      } else {
+         setPasswordError("Gagal mengubah password: " + err.message);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const [showSuccess, setShowSuccess] = useState(false);
   const [pricingPlans, setPricingPlans] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (window.location.hash === '#pricing') {
+      setTimeout(() => {
+        const element = document.getElementById('pricing');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 500);
+    }
+  }, [window.location.hash]);
+
+
+  const [trialRemaining, setTrialRemaining] = useState<{days: number, hours: number} | null>(null);
+
+  useEffect(() => {
+    if (userProfile?.plan === 'trial' && userProfile.createdAt) {
+      const trialDuration = 3 * 24 * 60 * 60 * 1000;
+      const createdAt = new Date(userProfile.createdAt).getTime();
+      const expiresAt = createdAt + trialDuration;
+      
+      const updateTimer = () => {
+        const now = new Date().getTime();
+        const diff = expiresAt - now;
+        
+        if (diff > 0) {
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          setTrialRemaining({ days, hours });
+        } else {
+          setTrialRemaining(null);
+        }
+      };
+      
+      updateTimer();
+      const interval = setInterval(updateTimer, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [userProfile]);
+
 
   useEffect(() => {
     const saved = localStorage.getItem('uniflow_pricing_plans');
@@ -92,13 +184,13 @@ export function Profile() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          amount: price,
-          customerDetails: {
+          gross_amount: price,
+          customer_details: {
             first_name: userProfile?.name || "User",
             email: userProfile?.email || "user@example.com",
             phone: userProfile?.phone || "081234567890"
           },
-          items: [{
+          item_details: [{
              id: `plan-${planId}`,
              price: price,
              quantity: 1,
@@ -158,10 +250,17 @@ export function Profile() {
                   <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                     <ShieldCheck className="h-4 w-4" /> Akun Aktif
                   </span>
+                  
                   <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                     <Crown className="h-4 w-4" /> 
                     {userProfile?.plan === 'trial' ? 'Uji Coba (Trial)' : (userProfile?.planName || 'PRO')}
                   </span>
+                  {trialRemaining && (
+                     <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
+                       <Clock className="h-4 w-4" /> Sisa: {trialRemaining.days} hari {trialRemaining.hours} jam
+                     </span>
+                  )}
+
                 </div>
               </div>
             </div>
@@ -224,7 +323,78 @@ export function Profile() {
                   {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
                 </Button>
               </div>
+            
             </form>
+            
+            <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800">
+               <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">Keamanan Akun</h3>
+               <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Tambahkan atau ubah password untuk akun Anda (berguna jika Anda login dengan Google).</p>
+               
+               <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                 {passwordSuccess && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-100 dark:border-emerald-900 rounded-xl flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-medium text-sm">
+                      <CheckCircle2 className="h-5 w-5" />
+                      Password berhasil diperbarui.
+                    </motion.div>
+                  )}
+                  {passwordError && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="p-4 bg-rose-50 dark:bg-rose-950/50 border border-rose-100 dark:border-rose-900 rounded-xl flex items-center gap-2 text-rose-700 dark:text-rose-400 font-medium text-sm">
+                      {passwordError}
+                    </motion.div>
+                  )}
+                 
+                 
+                 <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Password Baru</label>
+                    <div className="relative">
+                      <Input
+                        type={showNewPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Minimal 6 karakter"
+                        className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-[#059669] transition-colors"
+                      >
+                        {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Konfirmasi Password</label>
+                    <div className="relative">
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Tulis ulang password baru"
+                        className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-[#059669] transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isSaving || !newPassword || !confirmPassword}
+                    className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 text-white rounded-xl shadow-md"
+                  >
+                    Simpan Password Baru
+                  </Button>
+               </form>
+            </div>
+
           </CardContent>
         </Card>
       </motion.div>
