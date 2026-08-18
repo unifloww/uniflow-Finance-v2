@@ -21,6 +21,7 @@ import { UserLayout } from "./components/UserLayout";
 import { AdminLayout } from "./components/AdminLayout";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminUsers } from "./pages/AdminUsers";
+import { AdminUpgrades } from "./pages/AdminUpgrades";
 import { AdminPricing } from "./pages/AdminPricing";
 import { AdminRevenue } from "./pages/AdminRevenue";
 import { Dashboard } from "./pages/Dashboard";
@@ -53,6 +54,7 @@ export default function App() {
                 <Route element={<AdminLayout />}>
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
                   <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/admin/upgrades" element={<AdminUpgrades />} />
                   <Route path="/admin/pricing" element={<AdminPricing />} />
                   <Route path="/admin/revenue" element={<AdminRevenue />} />
                 </Route>

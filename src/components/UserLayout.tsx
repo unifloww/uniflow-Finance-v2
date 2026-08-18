@@ -60,62 +60,8 @@ export function UserLayout() {
     return null;
   }, [userProfile, isTrialExpired]);
 
-  const handleUpgrade = async () => {
-    try {
-      let amount = 23000;
-      let name = "Uniflow PRO (1 Bulan)";
-      const saved = localStorage.getItem('uniflow_pricing_plans');
-      if (saved) {
-        try {
-          const plans = JSON.parse(saved);
-          const monthPlan = plans.find((p: any) => p.id === '1_month');
-          if (monthPlan) {
-            amount = monthPlan.price;
-            name = monthPlan.title;
-          }
-        } catch(e) {}
-      }
-
-      const res = await fetch("/api/payment/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: amount,
-          customerDetails: {
-            first_name: userProfile?.name || "User",
-            email: userProfile?.email || "user@example.com",
-            phone: userProfile?.phone || "081234567890"
-          },
-          items: [{
-             id: "1_month",
-             price: amount,
-             quantity: 1,
-             name: name
-          }]
-        })
-      });
-      
-      const data = await res.json();
-      
-      if (data.token) {
-        window.snap.pay(data.token, {
-          onSuccess: async function() {
-            await updateProfile({ plan: 'pro', planName: name });
-            alert("Pembayaran berhasil! Selamat menikmati fitur PRO Uniflow.");
-            navigate('/dashboard');
-          },
-          onPending: function() {
-            alert("Menunggu pembayaran Anda.");
-          },
-          onError: function() {
-            alert("Pembayaran gagal!");
-          }
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      alert("Terjadi kesalahan saat memproses pembayaran. Silakan coba lagi nanti.");
-    }
+  const handleUpgrade = () => {
+    navigate('/dashboard/profile#pricing');
   };
 
   const handleLogout = async () => {

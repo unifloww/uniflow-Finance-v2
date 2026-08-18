@@ -25,8 +25,8 @@ export function PhoneLogin() {
 
   useEffect(() => {
     // Initialize reCAPTCHA verifier
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+    if (!(window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         'size': 'invisible',
         'callback': (response: any) => {
           // reCAPTCHA solved
@@ -52,7 +52,7 @@ export function PhoneLogin() {
         formattedPhone = "+" + formattedPhone;
       }
 
-      const appVerifier = window.recaptchaVerifier;
+      const appVerifier = (window as any).recaptchaVerifier;
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
       setConfirmationResult(confirmation);
       setShowOtpInput(true);
@@ -60,7 +60,7 @@ export function PhoneLogin() {
       console.error(err);
       setError("Gagal mengirim kode OTP: " + err.message);
       // reset recaptcha if needed
-      if (window.recaptchaVerifier) window.recaptchaVerifier.render().then((widgetId: any) => window.recaptchaVerifier.reset(widgetId));
+      if ((window as any).recaptchaVerifier) (window as any).recaptchaVerifier.render().then((widgetId: any) => (window as any).recaptchaVerifier.reset(widgetId));
     } finally {
       setLoading(false);
     }
