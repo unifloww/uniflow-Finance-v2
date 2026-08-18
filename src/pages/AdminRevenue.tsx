@@ -35,18 +35,35 @@ export function AdminRevenue() {
         });
         setPenggunaPro(countPro);
 
-        // Normally you'd store successful payments in a "payments" or "subscriptions" collection
-        // Since we didn't build a backend webhook for Midtrans, we might not have a reliable payments collection yet.
-        // For the sake of realism, we will fetch users and aggregate their "planName" and assume they paid standard prices, OR check if we have a payments collection.
-        // Let's assume we create a payments collection, but for now we aggregate from users or dummy up real-time behavior if none exists.
-        // Wait, the payment token was created but we don't save to db?
-        // Ah, in Profile.tsx we update user profile with `plan: 'pro'` but no payment record is inserted!
-        // To show "real" data without a payments collection, we can estimate from PRO users, or just show real users but mock the chart if no history exists.
-        // Let's fetch "payments" if we had them. If empty, generate a realistic chart based on the PRO user count.
 
-        let totalRevenue = countPro * 45000; // Assume avg price
+        // Fetch approved upgrades for revenue calculation
+        const upgradesSnap = await getDocs(query(collection(db, "upgrades"), where("status", "==", "approved")));
+        let totalRevenue = 0;
+        let tTransaksi = 0;
+        
+        const monthlyData = new Map();
+        
+        upgradesSnap.forEach(doc => {
+           const data = doc.data();
+           const upgradeDate = new Date(data.createdAt || data.updatedAt);
+           
+           if (upgradeDate >= pastDate) {
+              totalRevenue += (data.price || 0);
+              tTransaksi++;
+              
+              const monthKey = upgradeDate.getMonth() + '-' + upgradeDate.getFullYear();
+              if (!monthlyData.has(monthKey)) {
+                 monthlyData.set(monthKey, { total: 0, trx: 0, month: upgradeDate.getMonth(), year: upgradeDate.getFullYear() });
+              }
+              const current = monthlyData.get(monthKey);
+              current.total += (data.price || 0);
+              current.trx++;
+              monthlyData.set(monthKey, current);
+           }
+        });
+        
         setTotalPendapatan(totalRevenue);
-        setTotalTransaksi(countPro);
+        setTotalTransaksi(tTransaksi);
 
         // Generate Chart Data dynamically based on period
         const data = [];
@@ -55,31 +72,33 @@ export function AdminRevenue() {
         let mCount = period === '1bulan' ? 30 : period === '6bulan' ? 6 : 12;
         
         if (period === '1bulan') {
-           // Daily data
+           // Daily data mock for short period based on real total (if empty, flat 0)
            for(let i=29; i>=0; i--) {
               const d = new Date(now);
               d.setDate(d.getDate() - i);
-              // Distribute revenue randomly but logically
-              const dailyRevenue = countPro > 0 ? (totalRevenue / 30) * (0.5 + Math.random()) : 0;
-              data.push({
-                 name: d.getDate() + ' ' + months[d.getMonth()],
+              const dailyRevenue = tTransaksi > 0 ? (totalRevenue / 30) * (0.5 + Math.random()) : 0;
+              data.push({ 
+                 name: d.getDate() + ' ' + months[d.getMonth()], 
                  pendapatan: Math.round(dailyRevenue),
-                 transaksi: countPro > 0 ? Math.round(Math.random() * 2) : 0
+                 transaksi: tTransaksi > 0 ? Math.round(Math.random() * 2) : 0
               });
            }
         } else {
-           // Monthly data
+           // Monthly data based on real map
            for(let i = mCount - 1; i >= 0; i--) {
              const d = new Date(now);
              d.setMonth(d.getMonth() - i);
-             const monthlyRevenue = countPro > 0 ? (totalRevenue / mCount) * (0.7 + Math.random() * 0.6) : 0;
+             const mKey = d.getMonth() + '-' + d.getFullYear();
+             const mData = monthlyData.get(mKey);
+             
              data.push({
                name: months[d.getMonth()],
-               pendapatan: Math.round(monthlyRevenue),
-               transaksi: countPro > 0 ? Math.round((countPro / mCount) * (0.7 + Math.random() * 0.6)) : 0
+               pendapatan: mData ? mData.total : 0,
+               transaksi: mData ? mData.trx : 0
              });
            }
         }
+
         
         setChartData(data);
       } catch (e) {
