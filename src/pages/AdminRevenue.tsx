@@ -141,7 +141,7 @@ export function AdminRevenue() {
                </div>
                <span className="text-sm font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 rounded-full">+0.0%</span>
             </div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Pendapatan</p>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Total Pendapatan</p>
             <h3 className="text-3xl lg:text-4xl font-black text-slate-800 dark:text-white">Rp {totalPendapatan.toLocaleString('id-ID')}</h3>
           </CardContent>
         </Card>
@@ -154,7 +154,7 @@ export function AdminRevenue() {
                </div>
                <span className="text-sm font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 px-3 py-1 rounded-full">+0.0%</span>
             </div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Transaksi PRO</p>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Total Transaksi PRO</p>
             <h3 className="text-3xl lg:text-4xl font-black text-slate-800 dark:text-white">{totalTransaksi}</h3>
           </CardContent>
         </Card>
@@ -166,7 +166,7 @@ export function AdminRevenue() {
                   <Users className="w-7 h-7" />
                </div>
             </div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Pengguna Aktif PRO</p>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Pengguna Aktif PRO</p>
             <h3 className="text-3xl lg:text-4xl font-black text-slate-800 dark:text-white">{penggunaPro}</h3>
           </CardContent>
         </Card>

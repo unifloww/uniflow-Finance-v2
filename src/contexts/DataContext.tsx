@@ -7,7 +7,8 @@ export interface Account {
   id: string;
   name: string;
   type: 'bank' | 'wallet' | 'cash' | 'investment';
-  provider?: string;
+  provider?: string | null;
+  color?: string;
   balance: number;
   user_id?: string;
 }

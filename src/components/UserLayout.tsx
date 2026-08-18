@@ -178,11 +178,11 @@ export function UserLayout() {
       </aside>
 
       {/* Main Content */}
-      <main className={`flex flex-1 flex-col overflow-y-auto overflow-x-hidden transition-all duration-300 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
+      <main className={`flex flex-1 flex-col overflow-y-auto overflow-x-hidden pt-20 lg:pt-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
         {/* Mobile Header */}
-        <header className="sticky top-0 z-20 flex h-28 items-center justify-between border-b border-[#10b981] bg-[#059669] px-4 py-2 lg:hidden">
+        <header className="fixed top-0 inset-x-0 z-50 flex h-20 items-center justify-between border-b border-[#10b981] bg-[#059669] px-4 py-2 lg:hidden shadow-md">
           <div className="flex items-center">
-            <img src="https://firebasestorage.googleapis.com/v0/b/uniflow/o/Uniflow%20White.png?alt=media&token=ed8e2972-f297-4861-9920-c8145506122d" alt="UniFlow" className="h-20 w-auto max-w-[180px] object-contain drop-shadow-md" />
+            <img src="https://firebasestorage.googleapis.com/v0/b/uniflow/o/Uniflow%20White.png?alt=media&token=ed8e2972-f297-4861-9920-c8145506122d" alt="UniFlow" className="h-16 w-auto max-w-[200px] object-contain drop-shadow-md scale-125 origin-left ml-2" />
           </div>
           <div className="flex items-center space-x-2">
             {renderSyncIndicator(true)}
@@ -192,7 +192,7 @@ export function UserLayout() {
                 {userProfile?.name?.charAt(0).toUpperCase() || "U"}
               </span>
             </Link>
-            <button onClick={handleLogout} className="text-emerald-100 hover:text-rose-400 p-2 rounded-full hover:bg-white/10 transition-colors">
+            <button onClick={(e) => { e.preventDefault(); handleLogout(); }} className="text-white bg-rose-500 hover:bg-rose-600 p-2 rounded-full shadow-md transition-colors z-50 relative cursor-pointer">
               <LogOut className="h-5 w-5" />
             </button>
           </div>
@@ -238,7 +238,7 @@ export function UserLayout() {
       {/* Mobile Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-[#10b981] bg-[#059669] shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] lg:hidden px-1 pb-safe">
         {navItems.map((item) => {
-          if (item.name === 'Analitik') return null; // Sembunyikan analitik di mobile agar muat 5 icon
+          // Now showing all 6 icons
           
           const Icon = item.icon;
           const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
@@ -247,7 +247,7 @@ export function UserLayout() {
             <Link
               key={item.name}
               to={item.path}
-              className={`relative flex flex-col items-center justify-center w-[20%] h-full pt-1 ${
+              className={`relative flex flex-col items-center justify-center flex-1 h-full pt-1 ${
                 isActive ? 'text-white' : 'text-emerald-200/80 hover:text-white'
               }`}
             >
@@ -261,7 +261,7 @@ export function UserLayout() {
               <div className={`flex items-center justify-center p-1.5 rounded-full ${isActive ? 'bg-black/10' : ''} transition-colors`}>
                 <Icon className={`h-5 w-5 mb-0.5 ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-200/80'}`} />
               </div>
-              <span className={`text-[10px] font-bold ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-200/80'}`}>
+              <span className={`text-[9px] font-bold mt-0.5 ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-200/80'}`}>
                 {item.name}
               </span>
             </Link>

@@ -18,7 +18,7 @@ const PROVIDERS = [
   { id: "bri", name: "BRI", logo: "https://upload.wikimedia.org/wikipedia/commons/9/9e/BRI_2020.svg" },
   { id: "bni", name: "BNI", logo: "https://upload.wikimedia.org/wikipedia/id/5/55/BNI_logo.svg" },
   { id: "btn", name: "BTN", logo: "https://upload.wikimedia.org/wikipedia/commons/2/22/Bank_BTN_logo.svg" },
-  { id: "bsi", name: "BSI (Bank Syariah Indonesia)", logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Logo_BSI.svg" },
+  { id: "bsi", name: "BSI", logo: "https://upload.wikimedia.org/wikipedia/commons/8/8a/Logo_BSI.svg" },
   
   // Private Banks
   { id: "bca", name: "BCA", logo: "https://upload.wikimedia.org/wikipedia/commons/5/5c/Bank_Central_Asia.svg" },
@@ -32,7 +32,7 @@ const PROVIDERS = [
   { id: "jenius", name: "Jenius", logo: "https://upload.wikimedia.org/wikipedia/commons/b/b3/Jenius_logo.svg" },
   { id: "seabank", name: "SeaBank", logo: "https://upload.wikimedia.org/wikipedia/commons/f/fe/SeaBank_logo.svg" },
   { id: "jago", name: "Bank Jago", logo: "https://upload.wikimedia.org/wikipedia/commons/3/38/Bank_Jago_logo.svg" },
-  { id: "blu", name: "blu by BCA Digital", logo: "https://upload.wikimedia.org/wikipedia/commons/0/07/Blu_by_BCA_Digital_logo.svg" },
+  { id: "blu", name: "blu", logo: "https://upload.wikimedia.org/wikipedia/commons/0/07/Blu_by_BCA_Digital_logo.svg" },
 
   // E-Wallets
   { id: "gopay", name: "GoPay", logo: "https://upload.wikimedia.org/wikipedia/commons/8/86/Gopay_logo.svg" },
@@ -41,7 +41,7 @@ const PROVIDERS = [
   { id: "shopeepay", name: "ShopeePay", logo: "https://upload.wikimedia.org/wikipedia/commons/f/fe/Shopee_Pay_logo.svg" },
   { id: "linkaja", name: "LinkAja", logo: "https://upload.wikimedia.org/wikipedia/commons/8/85/LinkAja_logo.svg" },
   
-  { id: "other", name: "Lainnya", logo: null }
+  { id: "other", name: "Lainnya / Uang Tunai", logo: null }
 ];
 
 export function Accounts() {
@@ -54,6 +54,7 @@ export function Accounts() {
   const [type, setType] = useState<"bank" | "wallet" | "cash">("bank");
   const [provider, setProvider] = useState("other");
   const [balance, setBalance] = useState("");
+  const [color, setColor] = useState("#059669");
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -62,6 +63,7 @@ export function Accounts() {
     setType("bank");
     setProvider("other");
     setBalance("");
+    setColor("#059669");
     setShowAddForm(false);
     setEditingId(null);
   };
@@ -72,6 +74,7 @@ export function Accounts() {
     setType(acc.type);
     setProvider(acc.provider || "other");
     setBalance(acc.balance.toString());
+    setColor(acc.color || "#059669");
     setShowAddForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -84,15 +87,17 @@ export function Accounts() {
       editAccount(editingId, {
         name,
         type,
-        provider: provider !== "other" ? provider : undefined,
+        provider: provider !== "other" ? provider : null,
         balance: parseFloat(balance),
+        color,
       });
     } else {
       addAccount({
         name,
         type,
-        provider: provider !== "other" ? provider : undefined,
+        provider: provider !== "other" ? provider : null,
         balance: parseFloat(balance),
+        color,
       });
     }
 
@@ -133,10 +138,10 @@ export function Accounts() {
             <CardContent className="p-8 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                     Total Saldo Seluruh Akun
                   </h2>
-                  <button onClick={toggleHideBalances} className="text-slate-400 hover:text-[#059669] transition-colors">
+                  <button onClick={toggleHideBalances} className="text-slate-500 dark:text-slate-400 hover:text-[#059669] transition-colors">
                     {hideBalances ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                   </button>
                 </div>
@@ -239,6 +244,31 @@ export function Accounts() {
                         </select>
                       </div>
 
+                      
+                      <div className="space-y-3">
+                        <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Warna Dompet</label>
+                        <div className="flex flex-wrap items-center gap-3">
+                          {['#059669', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#ef4444', '#14b8a6'].map(c => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setColor(c)}
+                              className={`w-8 h-8 rounded-full border-2 transition-all ${color === c ? 'border-slate-800 dark:border-white scale-110' : 'border-transparent hover:scale-110'}`}
+                              style={{ backgroundColor: c }}
+                            />
+                          ))}
+                          <div className="relative">
+                            <input 
+                              type="color" 
+                              value={color}
+                              onChange={(e) => setColor(e.target.value)}
+                              className="w-8 h-8 rounded-full border-0 p-0 cursor-pointer overflow-hidden appearance-none"
+                              style={{ backgroundColor: color }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                           Saldo {editingId ? "Saat Ini (Rp)" : "Awal (Rp)"}
@@ -266,7 +296,7 @@ export function Accounts() {
                       </Button>
                       <Button
                         type="submit"
-                        className="bg-[#059669] text-white hover:bg-[#047857] shadow-lg shadow-emerald-900/20 rounded-xl font-semibold px-6"
+                        className="bg-gradient-to-r from-[#059669] to-teal-500 text-white hover:from-[#047857] hover:to-teal-600 shadow-xl shadow-emerald-500/30 rounded-xl font-bold px-8"
                       >
                         {editingId ? "Simpan Perubahan" : "Simpan Akun"}
                       </Button>
@@ -299,7 +329,7 @@ export function Accounts() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-[#059669] hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm"
+                    className="h-8 w-8 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-[#059669] hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm"
                     onClick={() => handleEditClick(acc)}
                   >
                     <Edit2 className="h-4 w-4" />
@@ -307,7 +337,7 @@ export function Accounts() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 text-slate-400 dark:text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm"
+                    className="h-8 w-8 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm"
                     onClick={() => setConfirmDeleteId(acc.id)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -316,10 +346,10 @@ export function Accounts() {
                 <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-6">
                   {providerInfo?.logo ? (
                      <div className="h-8 w-16 bg-white dark:bg-slate-900 rounded flex items-center justify-start">
-                       <img src={providerInfo.logo} alt={providerInfo.name} className="max-h-full max-w-full object-contain" />
+                       <img src={providerInfo.logo} alt={providerInfo.name} className="max-h-full max-w-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; if(e.currentTarget.parentElement) { e.currentTarget.parentElement.innerHTML = '<span class="text-xs font-bold text-slate-500 dark:text-slate-400">' + providerInfo.name.substring(0,3).toUpperCase() + '</span>' } }} />
                      </div>
                   ) : (
-                    <div className="h-10 w-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-center text-slate-400 dark:text-slate-500">
+                    <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: acc.color || '#059669' }}>
                       {acc.type === "bank" ? (
                         <Landmark className="h-5 w-5" />
                       ) : acc.type === "wallet" ? (
@@ -334,7 +364,7 @@ export function Accounts() {
                   <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-200 line-clamp-1 mb-1 pr-10">
                     {acc.name}
                   </CardTitle>
-                  <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-3">
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-3">
                     {acc.type}
                   </p>
                   <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">

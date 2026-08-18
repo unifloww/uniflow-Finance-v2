@@ -128,7 +128,7 @@ export function AdminDashboard() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6 px-6">
             <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5 group relative cursor-help">
               Total Pengguna
-              <Info className="h-4 w-4 text-slate-400" />
+              <Info className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               <div className="pointer-events-none absolute left-0 top-full mt-2 w-56 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 dark:bg-slate-700 text-white text-xs p-2.5 rounded-xl shadow-xl z-50 normal-case tracking-normal font-medium leading-relaxed">
                 Jumlah seluruh pengguna terdaftar, termasuk pengguna trial dan PRO.
               </div>
@@ -148,7 +148,7 @@ export function AdminDashboard() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6 px-6">
             <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5 group relative cursor-help">
               Sesi Aktif Hari Ini
-              <Info className="h-4 w-4 text-slate-400" />
+              <Info className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               <div className="pointer-events-none absolute left-0 top-full mt-2 w-56 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 dark:bg-slate-700 text-white text-xs p-2.5 rounded-xl shadow-xl z-50 normal-case tracking-normal font-medium leading-relaxed">
                 Jumlah pengguna unik yang login atau membuka aplikasi hari ini (dihitung dari local storage).
               </div>
@@ -168,7 +168,7 @@ export function AdminDashboard() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6 px-6">
             <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1.5 group relative cursor-help">
               Total Transaksi
-              <Info className="h-4 w-4 text-slate-400" />
+              <Info className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               <div className="pointer-events-none absolute left-0 top-full mt-2 w-56 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 dark:bg-slate-700 text-white text-xs p-2.5 rounded-xl shadow-xl z-50 normal-case tracking-normal font-medium leading-relaxed">
                 Total keseluruhan transaksi masuk dan keluar yang dicatat oleh semua pengguna.
               </div>
@@ -252,7 +252,7 @@ export function AdminDashboard() {
         </CardHeader>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50 dark:text-slate-400">
+            <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-800/50 dark:text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-6 py-4">Pengguna</th>
                 <th className="px-6 py-4">Transaksi</th>

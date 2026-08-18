@@ -295,7 +295,7 @@ export function Dashboard() {
                    className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-teal-100 hover:shadow-md transition-all"
                  >
                    <div className="flex items-center space-x-4">
-                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 dark:bg-teal-950/50 text-teal-600">
+                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-sm" style={{ backgroundColor: acc.color || '#059669' }}>
                        <CreditCard className="h-6 w-6" />
                      </div>
                      <div>
