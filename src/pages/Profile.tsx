@@ -287,8 +287,8 @@ export function Profile() {
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-12">
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-3xl font-bold tracking-tight text-white">Profil Pengguna</h1>
-        <p className="text-sm text-emerald-100 mt-1">Atur informasi pribadi dan kelola paket berlangganan Anda.</p>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">Profil Pengguna</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Atur informasi pribadi dan kelola paket berlangganan Anda.</p>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
@@ -504,7 +504,7 @@ export function Profile() {
             <Crown className="h-6 w-6 text-amber-400" /> 
             Upgrade Paket Anda
           </h2>
-          <p className="text-sm text-emerald-100 mt-1">Dapatkan akses tak terbatas dan kendali penuh atas keuangan Anda.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Dapatkan akses tak terbatas dan kendali penuh atas keuangan Anda.</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">

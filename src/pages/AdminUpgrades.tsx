@@ -86,8 +86,8 @@ export function AdminUpgrades() {
   return (
     <div className="space-y-6 pb-12">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-white">Konfirmasi Pembayaran</h1>
-        <p className="text-sm text-emerald-100 max-w-xl mt-1 opacity-90">Verifikasi bukti transfer pengguna untuk aktivasi paket PRO.</p>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">Konfirmasi Pembayaran</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mt-1">Verifikasi bukti transfer pengguna untuk aktivasi paket PRO.</p>
       </div>
 
       <Card className="bg-white dark:bg-slate-900 border-0 shadow-lg rounded-[2rem] overflow-hidden">

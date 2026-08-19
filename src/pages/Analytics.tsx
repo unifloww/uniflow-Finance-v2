@@ -92,10 +92,10 @@ export function Analytics() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
           Analitik
         </h1>
-        <p className="text-sm text-emerald-100">
+        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-1">
           Visualisasi data pengeluaran dan pemasukan Anda.
         </p>
       </div>

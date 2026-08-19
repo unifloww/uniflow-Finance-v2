@@ -69,10 +69,10 @@ export function Goals() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Impian & Tujuan
           </h1>
-          <p className="text-sm text-emerald-100">
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-1">
             Pantau progres keuangan untuk mencapai impian Anda.
           </p>
         </div>
@@ -84,7 +84,7 @@ export function Goals() {
               setShowAddForm(true);
             }
           }}
-          className="bg-white dark:bg-slate-900 text-[#059669] hover:bg-slate-50 dark:bg-slate-800/50 font-semibold shadow-md"
+          className="bg-gradient-to-r from-[#059669] to-teal-600 hover:from-[#047857] hover:to-teal-700 text-white font-bold shadow-md shadow-emerald-500/20 transition-all border-0"
         >
           {showAddForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
           {showAddForm ? "Batal" : "Tambah Impian"}
@@ -247,14 +247,14 @@ export function Goals() {
         })}
 
         {goals.length === 0 && !showAddForm && (
-          <div className="md:col-span-2 flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-white/20 bg-white dark:bg-slate-900/5 rounded-[2rem]">
-            <div className="h-16 w-16 rounded-full bg-white/10 flex items-center justify-center mb-4 backdrop-blur-sm">
-              <Target className="h-8 w-8 text-white" />
+          <div className="md:col-span-2 flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm">
+            <div className="h-16 w-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+              <Target className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
               Belum ada target impian
             </h3>
-            <p className="text-emerald-100">
+            <p className="text-slate-500 dark:text-slate-400">
               Mulai rencanakan masa depan keuangan Anda sekarang.
             </p>
           </div>

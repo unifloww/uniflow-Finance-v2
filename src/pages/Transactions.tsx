@@ -237,25 +237,31 @@ export function Transactions() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Transaksi
           </h1>
-          <p className="text-sm text-emerald-100">
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-1">
             Kelola riwayat pemasukan dan pengeluaran Anda.
           </p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <Button onClick={exportToCSV} className="bg-white/10 text-white border-0 hover:bg-white/20 shadow-none">
-            <FileText className="mr-2 h-4 w-4" />
+          <Button 
+            onClick={exportToCSV} 
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm font-bold transition-all"
+          >
+            <FileText className="mr-2 h-4 w-4 text-emerald-600" />
             CSV
           </Button>
-          <Button onClick={exportToPDF} className="bg-white/10 text-white border-0 hover:bg-white/20 shadow-none">
-            <FileDown className="mr-2 h-4 w-4" />
+          <Button 
+            onClick={exportToPDF} 
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm font-bold transition-all"
+          >
+            <FileDown className="mr-2 h-4 w-4 text-emerald-600" />
             PDF
           </Button>
           <Button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="flex-1 sm:flex-none bg-white dark:bg-slate-900 text-[#059669] hover:bg-slate-50 dark:bg-slate-800/50 font-semibold shadow-md transition-all"
+            className="flex-1 sm:flex-none bg-gradient-to-r from-[#059669] to-teal-600 hover:from-[#047857] hover:to-teal-700 text-white font-bold shadow-md shadow-emerald-500/20 transition-all border-0"
           >
             {showAddForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
             {showAddForm ? "Batal" : "Tambah"}
@@ -265,13 +271,13 @@ export function Transactions() {
 
       <div className="flex flex-col md:flex-row gap-4 mb-2">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-emerald-100" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500" />
           <Input
             type="text"
             placeholder="Cari transaksi berdasarkan catatan..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 bg-white/10 border-white/20 text-white placeholder:text-emerald-100/70 rounded-full h-11 w-full focus-visible:ring-white/30"
+            className="pl-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-full h-11 w-full shadow-sm focus-visible:ring-2 focus-visible:ring-[#059669]"
           />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:pb-0 items-center">
@@ -282,12 +288,17 @@ export function Transactions() {
               weekly: "7 Hari",
               monthly: "Bulan Ini"
             };
+            const isSelected = filterPeriod === period;
             return (
               <Button 
                 key={period}
-                variant={filterPeriod === period ? "default" : "outline"} 
+                variant="outline"
                 onClick={() => setFilterPeriod(period as any)}
-                className={`rounded-full px-5 h-10 shrink-0 ${filterPeriod === period ? "bg-white dark:bg-slate-900 text-[#059669] shadow-sm font-bold" : "bg-white/10 text-white border-white/20 hover:bg-white/20 font-medium"}`}
+                className={`rounded-full px-5 h-10 shrink-0 transition-all ${
+                  isSelected 
+                    ? "bg-gradient-to-r from-[#059669] to-teal-600 text-white border-0 shadow-md shadow-emerald-500/20 font-bold" 
+                    : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold shadow-sm"
+                }`}
                 size="sm"
               >
                 {labels[period]}

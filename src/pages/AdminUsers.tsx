@@ -149,10 +149,10 @@ export function AdminUsers() {
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Manajemen User
           </h1>
-          <p className="text-sm text-emerald-100 max-w-xl mt-1 opacity-90">
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mt-1">
             Kelola akses, edit, dan hapus pengguna aplikasi.
           </p>
         </div>

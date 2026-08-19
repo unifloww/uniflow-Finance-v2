@@ -92,10 +92,10 @@ export function AdminPricing() {
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Pengaturan Harga & Paket
           </h1>
-          <p className="text-sm text-emerald-100 max-w-xl mt-1 opacity-90">
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mt-1">
             Ubah harga dan fitur paket langganan yang tampil di Landing Page.
           </p>
         </div>

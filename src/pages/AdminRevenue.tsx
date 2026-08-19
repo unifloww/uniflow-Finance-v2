@@ -112,8 +112,8 @@ export function AdminRevenue() {
     <div className="space-y-6 pb-12">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Penghasilan</h1>
-          <p className="text-sm text-emerald-100 max-w-xl mt-1 opacity-90">Pantau pertumbuhan pendapatan dan analisis transaksi dari paket langganan.</p>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">Penghasilan</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl mt-1">Pantau pertumbuhan pendapatan dan analisis transaksi dari paket langganan.</p>
         </div>
         
         <div className="flex items-center gap-3">

@@ -110,10 +110,10 @@ export function Accounts() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
             Akun & Dompet
           </h1>
-          <p className="text-sm text-emerald-100">
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-1">
             Kelola rekening bank, e-wallet, dan uang tunai Anda.
           </p>
         </div>
@@ -125,7 +125,7 @@ export function Accounts() {
               setShowAddForm(true);
             }
           }}
-          className="bg-white dark:bg-slate-900 text-[#059669] hover:bg-slate-50 dark:bg-slate-800/50 font-semibold shadow-md"
+          className="bg-gradient-to-r from-[#059669] to-teal-600 hover:from-[#047857] hover:to-teal-700 text-white font-bold shadow-md shadow-emerald-500/20 transition-all border-0"
         >
           {showAddForm ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
           {showAddForm ? "Batal" : "Tambah Akun"}
@@ -134,18 +134,18 @@ export function Accounts() {
 
       <div className="grid gap-6 md:grid-cols-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="md:col-span-4">
-          <Card className="rounded-[2rem] border-0 shadow-xl bg-gradient-to-br from-white to-slate-50">
+          <Card className="rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
             <CardContent className="p-8 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <h2 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Total Saldo Seluruh Akun
                   </h2>
                   <button onClick={toggleHideBalances} className="text-slate-500 dark:text-slate-400 hover:text-[#059669] transition-colors">
                     {hideBalances ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                   </button>
                 </div>
-                <div className="text-4xl sm:text-5xl font-black text-slate-800 dark:text-slate-200 tracking-tight">
+                <div className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
                   {hideBalances ? "Rp •••••••" : formatCurrency(totalBalance)}
                 </div>
               </div>
@@ -314,14 +314,24 @@ export function Accounts() {
           return (
             <motion.div key={acc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="md:col-span-1 sm:col-span-2">
               <Card
-                className="rounded-[2rem] border-0 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 bg-white dark:bg-slate-900 h-full relative group overflow-hidden"
+                className="rounded-[2rem] border-0 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 h-full relative group overflow-hidden"
+                style={{
+                  background: acc.color 
+                    ? `linear-gradient(135deg, ${acc.color}dd, ${acc.color})` 
+                    : 'linear-gradient(135deg, #059669dd, #046a4e)',
+                  color: 'white'
+                }}
               >
+                {/* Decorative circles */}
+                <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-black/10 rounded-full blur-xl pointer-events-none" />
+                
                 {confirmDeleteId === acc.id && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm px-4">
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200 text-center mb-4">Hapus akun ini?</p>
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md px-4">
+                    <p className="text-sm font-bold text-white text-center mb-4">Hapus akun ini?</p>
                     <div className="flex gap-2 w-full justify-center">
-                      <Button size="sm" variant="outline" className="rounded-xl border-slate-200 dark:border-slate-700" onClick={() => setConfirmDeleteId(null)}>Batal</Button>
-                      <Button size="sm" className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white" onClick={() => { deleteAccount(acc.id); setConfirmDeleteId(null); }}>Hapus</Button>
+                      <Button size="sm" variant="outline" className="rounded-xl border-white/20 text-slate-800 hover:text-slate-900 bg-white" onClick={() => setConfirmDeleteId(null)}>Batal</Button>
+                      <Button size="sm" className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white border-0" onClick={() => { deleteAccount(acc.id); setConfirmDeleteId(null); }}>Hapus</Button>
                     </div>
                   </div>
                 )}
@@ -329,7 +339,7 @@ export function Accounts() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-[#059669] hover:bg-teal-50 dark:hover:bg-teal-950/50 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm"
+                    className="h-8 w-8 text-white hover:text-emerald-100 hover:bg-black/20 rounded-full bg-black/10 backdrop-blur-sm shadow-sm border border-white/10"
                     onClick={() => handleEditClick(acc)}
                   >
                     <Edit2 className="h-4 w-4" />
@@ -337,19 +347,19 @@ export function Accounts() {
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm"
+                    className="h-8 w-8 text-white hover:text-rose-200 hover:bg-black/20 rounded-full bg-black/10 backdrop-blur-sm shadow-sm border border-white/10"
                     onClick={() => setConfirmDeleteId(acc.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-6">
+<CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-6">
                   {providerInfo?.logo ? (
-                     <div className="h-8 w-16 bg-white dark:bg-slate-900 rounded flex items-center justify-start">
+                     <div className="h-8 w-16 bg-white/20 backdrop-blur-sm rounded-lg p-1.5 flex items-center justify-center border border-white/30 shadow-sm">
                        <img src={providerInfo.logo} alt={providerInfo.name} className="max-h-full max-w-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; if(e.currentTarget.parentElement) { e.currentTarget.parentElement.innerHTML = '<span class="text-xs font-bold text-slate-500 dark:text-slate-400">' + providerInfo.name.substring(0,3).toUpperCase() + '</span>' } }} />
                      </div>
                   ) : (
-                    <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ backgroundColor: acc.color || '#059669' }}>
+                    <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm bg-white/20 backdrop-blur-sm border border-white/30">
                       {acc.type === "bank" ? (
                         <Landmark className="h-5 w-5" />
                       ) : acc.type === "wallet" ? (
@@ -361,13 +371,13 @@ export function Accounts() {
                   )}
                 </CardHeader>
                 <CardContent className="pt-4 pb-6">
-                  <CardTitle className="text-base font-bold text-slate-800 dark:text-slate-200 line-clamp-1 mb-1 pr-10">
+                  <CardTitle className="text-base font-bold text-white line-clamp-1 mb-1 pr-10 drop-shadow-sm">
                     {acc.name}
                   </CardTitle>
-                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-3">
+                  <p className="text-[10px] font-bold text-white/70 uppercase tracking-wide mb-3">
                     {acc.type}
                   </p>
-                  <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                  <div className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
                     {hideBalances ? "Rp •••••••" : formatCurrency(acc.balance)}
                   </div>
                 </CardContent>

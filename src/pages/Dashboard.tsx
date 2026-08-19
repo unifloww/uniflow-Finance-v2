@@ -1,14 +1,15 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useData } from "../contexts/DataContext";
-import {
+import {  Link } from "react-router-dom";
+import {  useAuth } from "../contexts/AuthContext";
+import {  useData } from "../contexts/DataContext";
+import { 
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
-import {
-  Wallet,
+import { 
+  Clock, Wallet,
   TrendingUp,
   TrendingDown,
   Activity,
@@ -16,11 +17,23 @@ import {
   CreditCard,
   PiggyBank,
   Eye,
-  EyeOff
+  EyeOff,
+  BarChart3,
+  History,
+  ChevronRight,
+  ArrowUpRight,
+  ShoppingBag,
+  Coffee,
+  Utensils,
+  Car,
+  Home,
+  Briefcase,
+  Zap,
+  Tag
 } from "lucide-react";
-import { formatCurrency } from "../lib/utils";
-import { motion } from "motion/react";
-import { BudgetSection } from "../components/BudgetSection";
+import {  formatCurrency } from "../lib/utils";
+import {  motion } from "motion/react";
+import {  BudgetSection } from "../components/BudgetSection";
 
 const financialQuotes = [
   "Uang adalah hamba yang baik, namun tuan yang buruk.",
@@ -34,10 +47,24 @@ const financialQuotes = [
   "Ketenangan pikiran finansial adalah bentuk tertinggi dari kekayaan.",
 ];
 
+// Helper to get category icon
+const getCategoryIcon = (categoryName: string) => {
+  const cat = categoryName.toLowerCase();
+  if (cat.includes("kopi") || cat.includes("coffee") || cat.includes("cafe")) return <Coffee className="w-5 h-5 text-amber-600" />;
+  if (cat.includes("makan") || cat.includes("food") || cat.includes("restoran") || cat.includes("kuliner")) return <Utensils className="w-5 h-5 text-orange-500" />;
+  if (cat.includes("belanja") || cat.includes("shopping") || cat.includes("mall")) return <ShoppingBag className="w-5 h-5 text-emerald-500" />;
+  if (cat.includes("transport") || cat.includes("bensin") || cat.includes("ojek") || cat.includes("kendaraan")) return <Car className="w-5 h-5 text-blue-500" />;
+  if (cat.includes("gaji") || cat.includes("salary") || cat.includes("bisnis") || cat.includes("proyek")) return <Briefcase className="w-5 h-5 text-teal-600" />;
+  if (cat.includes("tagihan") || cat.includes("listrik") || cat.includes("air") || cat.includes("internet")) return <Zap className="w-5 h-5 text-yellow-500" />;
+  if (cat.includes("rumah") || cat.includes("sewa") || cat.includes("kost")) return <Home className="w-5 h-5 text-indigo-500" />;
+  return <Tag className="w-5 h-5 text-emerald-600" />;
+};
+
 export function Dashboard() {
   const { currentUser, userProfile } = useAuth();
   const [greeting, setGreeting] = useState("Halo");
   const [currentTimeStr, setCurrentTimeStr] = useState("");
+  const [currentDateStr, setCurrentDateStr] = useState("");
 
   useEffect(() => {
     const updateTime = () => {
@@ -51,17 +78,20 @@ export function Dashboard() {
       
       setGreeting(newGreeting);
       setCurrentTimeStr(now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }));
+      setCurrentDateStr(now.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short" }));
     };
 
     updateTime();
     const intervalId = setInterval(updateTime, 60000);
     return () => clearInterval(intervalId);
   }, []);
+
   const randomQuote = useMemo(() => {
     return financialQuotes[Math.floor(Math.random() * financialQuotes.length)];
   }, []);
 
   const firstName = userProfile?.name?.split(" ")[0] || currentUser?.email?.split("@")[0] || "Teman";
+  const userInitial = userProfile?.name?.charAt(0)?.toUpperCase() || firstName.charAt(0).toUpperCase() || "U";
   const { accounts, transactions, hideBalances, toggleHideBalances } = useData();
 
   const totalBalance = useMemo(() => {
@@ -79,6 +109,48 @@ export function Dashboard() {
     return { income, expense };
   }, [transactions]);
 
+  // Today's summary calculation
+  const { todayIncome, todayExpense, todayDelta, todayCount } = useMemo(() => {
+    const today = new Date().toDateString();
+    let todayIncome = 0;
+    let todayExpense = 0;
+    let todayCount = 0;
+
+    transactions.forEach((tx) => {
+      const txDate = new Date(tx.date).toDateString();
+      if (txDate === today) {
+        todayCount++;
+        if (tx.type === "income") todayIncome += tx.amount;
+        if (tx.type === "expense") todayExpense += tx.amount;
+      }
+    });
+
+    return {
+      todayIncome,
+      todayExpense,
+      todayDelta: todayIncome - todayExpense,
+      todayCount
+    };
+  }, [transactions]);
+
+  // Top / Popular Categories breakdown
+  const topCategories = useMemo(() => {
+    const catMap: { [key: string]: { name: string; amount: number; count: number; type: 'income' | 'expense' } } = {};
+    
+    transactions.forEach((tx) => {
+      const key = tx.category || "Lainnya";
+      if (!catMap[key]) {
+        catMap[key] = { name: key, amount: 0, count: 0, type: tx.type };
+      }
+      catMap[key].amount += tx.amount;
+      catMap[key].count += 1;
+    });
+
+    const list = Object.values(catMap).sort((a, b) => b.amount - a.amount);
+    const maxAmount = list.length > 0 ? Math.max(...list.map((c) => c.amount), 1) : 1;
+    return { list: list.slice(0, 4), maxAmount };
+  }, [transactions]);
+
   const recentTransactions = useMemo(() => {
     return [...transactions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -89,168 +161,314 @@ export function Dashboard() {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: 0.1 }
+      transition: { staggerChildren: 0.08 }
     }
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
   };
 
   const maskedValue = "Rp •••••••";
 
+
   return (
-    <motion.div 
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-      className="space-y-6"
-    >
-      <motion.div variants={itemVariants} className="flex flex-row items-end justify-between">
+    <>
+      {/* MOBILE LAYOUT */}
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="space-y-6 max-w-7xl mx-auto lg:hidden"
+      >
+  
+      {/* Top Header matching mock-up */}
+      <motion.div variants={itemVariants} className="flex items-center justify-between pt-1">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">
-            {greeting}, {firstName} 👋
-          </h1>
-          <p className="text-sm text-emerald-100 max-w-xl mt-1 opacity-90">
-            "{randomQuote}"<br />
-            <span className="font-semibold text-white/90 inline-block mt-2 px-3 py-1 bg-white/10 rounded-full text-xs">🕒 {currentTimeStr} — Jangan lupa catat keuanganmu hari ini!</span>
+          <p className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 capitalize tracking-wide">
+            {currentDateStr || "Hari ini"}
           </p>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white mt-0.5">
+            Dashboard
+          </h1>
         </div>
-        <button 
-          onClick={toggleHideBalances} 
-          className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-bold transition-colors"
+        
+        <Link 
+          to="/dashboard/profile"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-tr from-[#059669] to-teal-400 text-white font-black text-base shadow-lg shadow-emerald-600/30 hover:scale-105 transition-all border-2 border-white dark:border-slate-800"
         >
-          {hideBalances ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-          <span className="hidden sm:inline">{hideBalances ? "Tampilkan" : "Sembunyikan"}</span>
-        </button>
+          {userInitial}
+        </Link>
       </motion.div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <motion.div variants={itemVariants}>
-          <Card className="rounded-[2rem] border-0 shadow-lg overflow-hidden bg-white dark:bg-slate-900 hover:shadow-xl transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6 px-6">
-              <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total Dana</CardTitle>
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-indigo-500" />
-              </div>
-            </CardHeader>
-            <CardContent className="pb-6 px-6">
-              <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight mt-1">
-                {hideBalances ? maskedValue : formatCurrency(totalBalance)}
-              </div>
-              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-3">Dari {accounts.length} akun aktif</p>
-            </CardContent>
-          </Card>
-        </motion.div>
+      {/* Main Pocket / Wallet Card - Signature Emerald Gradient matching mockup */}
+      <motion.div variants={itemVariants} className="relative pt-2">
+        {/* Back Card peeking out from the pocket */}
+        <div className="mx-4 sm:mx-8 rounded-t-3xl sm:rounded-t-[2.2rem] bg-gradient-to-r from-emerald-400 via-[#10b981] to-[#059669] pt-4 sm:pt-5 pb-8 sm:pb-9 px-5 sm:px-7 text-white flex items-center justify-between shadow-md border-t border-x border-emerald-300/40 relative overflow-hidden">
+          {/* Soft shine */}
+          <div className="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 rounded-full bg-white/20 blur-xl pointer-events-none" />
+          
+          <div className="space-y-0.5 relative z-10">
+            <p className="text-[11px] sm:text-xs font-bold text-emerald-100/90 leading-tight">
+              {greeting},
+            </p>
+            <h3 className="text-base sm:text-xl font-black tracking-tight text-white drop-shadow-sm leading-tight truncate max-w-[200px] sm:max-w-none">
+              {userProfile?.name || firstName}
+            </h3>
+          </div>
 
-        <motion.div variants={itemVariants}>
-          <Card className="rounded-[2rem] border-0 shadow-lg overflow-hidden bg-white dark:bg-slate-900 hover:shadow-xl transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6 px-6">
-              <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Pemasukan</CardTitle>
-              <div className="p-3 bg-[#059669]/10 dark:bg-[#059669]/20 rounded-full flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-[#059669]" />
-              </div>
-            </CardHeader>
-            <CardContent className="pb-6 px-6">
-              <div className="text-3xl sm:text-4xl font-black text-[#059669] tracking-tight mt-1">
-                {hideBalances ? maskedValue : formatCurrency(income)}
-              </div>
-              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-3">Total akumulasi</p>
-            </CardContent>
-          </Card>
-        </motion.div>
+          <span className="relative z-10 text-xs sm:text-sm font-black tracking-wider text-white uppercase drop-shadow-sm bg-white/20 px-3 py-1 rounded-full border border-white/30 backdrop-blur-sm">
+            {userProfile?.plan === 'pro' ? 'PRO' : (accounts[0]?.type?.toUpperCase() || 'CASH')}
+          </span>
+        </div>
 
-        <motion.div variants={itemVariants}>
-          <Card className="rounded-[2rem] border-0 shadow-lg overflow-hidden bg-white dark:bg-slate-900 hover:shadow-xl transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6 px-6">
-              <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Pengeluaran</CardTitle>
-              <div className="p-3 bg-rose-100 dark:bg-rose-900/20 rounded-full flex items-center justify-center">
-                <TrendingDown className="h-5 w-5 text-rose-600" />
-              </div>
-            </CardHeader>
-            <CardContent className="pb-6 px-6">
-              <div className="text-3xl sm:text-4xl font-black text-rose-600 tracking-tight mt-1">
-                {hideBalances ? maskedValue : formatCurrency(expense)}
-              </div>
-              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-3">Total akumulasi</p>
-            </CardContent>
-          </Card>
-        </motion.div>
+        {/* Front Pocket Flap */}
+        <div className="-mt-5 relative z-10 rounded-[2.3rem] sm:rounded-[2.6rem] bg-gradient-to-b from-[#059669] via-[#047857] to-[#046246] p-5 sm:p-7 text-white shadow-2xl shadow-emerald-950/40 border border-emerald-500/30 overflow-hidden">
+          {/* Curved top scoop of the pocket with dashed stitch line */}
+          <svg
+            viewBox="0 0 400 36"
+            preserveAspectRatio="none"
+            className="absolute top-0 inset-x-0 w-full h-8 pointer-events-none z-10"
+          >
+            <defs>
+              <linearGradient id="pocketSeamShadow" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="rgba(0,0,0,0.3)" />
+                <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+              </linearGradient>
+            </defs>
+            <path d="M0,0 Q200,30 400,0 L400,10 Q200,34 0,10 Z" fill="url(#pocketSeamShadow)" />
+            <path
+              d="M8,6 Q200,30 392,6"
+              fill="none"
+              stroke="rgba(255,255,255,0.45)"
+              strokeWidth="2"
+              strokeDasharray="6,5"
+            />
+          </svg>
 
-        <motion.div variants={itemVariants}>
-          <Card className="rounded-[2rem] border-0 shadow-lg overflow-hidden bg-gradient-to-br from-[#059669] to-emerald-800 text-white hover:shadow-xl transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6 px-6">
-              <CardTitle className="text-xs font-bold text-emerald-100 uppercase tracking-widest">Cashflow</CardTitle>
-              <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm flex items-center justify-center">
-                <Activity className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent className="pb-6 px-6">
-              <div className="text-3xl sm:text-4xl font-black tracking-tight mt-1">
-                {hideBalances ? maskedValue : formatCurrency(income - expense)}
-              </div>
-              <p className="text-xs font-bold text-emerald-200 mt-3">Selisih masuk & keluar</p>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+          {/* Perimeter stitched line around the pocket pouch */}
+          <div className="absolute inset-2 sm:inset-3 rounded-[1.9rem] sm:rounded-[2.2rem] border border-dashed border-white/25 pointer-events-none z-0" />
 
+          {/* Balance & Delta Trend */}
+          <div className="relative z-10 pt-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-widest text-emerald-200/90">
+                TOTAL BALANCE
+              </p>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-base sm:text-xl font-black text-emerald-200">Rp</span>
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-md">
+                  {hideBalances ? "•••••••" : (totalBalance).toLocaleString("id-ID")}
+                </h2>
+              </div>
+            </div>
+            
+            {/* Delta Trend on the right */}
+            <div className="flex items-center gap-1.5 self-start sm:self-auto text-xs sm:text-sm font-bold text-emerald-100 drop-shadow-sm bg-black/10 sm:bg-transparent px-2.5 py-1 sm:p-0 rounded-full">
+              <TrendingUp className="w-4 h-4 text-emerald-200 shrink-0" />
+              <span>
+                {todayCount > 0 
+                  ? (todayDelta >= 0 ? `Rp ${Math.abs(todayDelta).toLocaleString("id-ID")} today` : `-Rp ${Math.abs(todayDelta).toLocaleString("id-ID")} today`)
+                  : `${accounts.length} akun aktif`}
+              </span>
+            </div>
+          </div>
+
+          {/* Pocket Action Buttons Row */}
+          <div className="relative z-10 mt-7 flex items-center gap-3">
+            <Link
+              to="/dashboard/analytics"
+              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md py-3.5 px-5 text-xs sm:text-sm font-black text-white shadow-md border border-white/25 transition-all active:scale-95 cursor-pointer"
+            >
+              <BarChart3 className="w-4 h-4 text-emerald-100" />
+              <span>Lihat Laporan</span>
+            </Link>
+            
+            <Link
+              to="/dashboard/transactions"
+              title="Riwayat Transaksi"
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md text-white shadow-md border border-white/25 transition-all active:scale-95 cursor-pointer shrink-0"
+            >
+              <History className="w-5 h-5 text-emerald-100" />
+            </Link>
+            
+            <button
+              onClick={toggleHideBalances}
+              title={hideBalances ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md text-white shadow-md border border-white/25 transition-all active:scale-95 cursor-pointer shrink-0"
+            >
+              {hideBalances ? <EyeOff className="w-5 h-5 text-emerald-100" /> : <Eye className="w-5 h-5 text-emerald-100" />}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* 3-Column Stats Row (Sales Today / Items Sold / Low Stock equivalent) */}
+      <motion.div variants={itemVariants}>
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 rounded-[2rem] bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800/80">
+          <div className="text-center border-r border-slate-100 dark:border-slate-800 pr-1 sm:pr-2">
+            <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+              {transactions.length}
+            </p>
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+              Total Transaksi
+            </p>
+          </div>
+          
+          <div className="text-center border-r border-slate-100 dark:border-slate-800 px-1 sm:px-2">
+            <p className="text-sm sm:text-base lg:text-lg font-black text-emerald-600 dark:text-emerald-400 truncate">
+              {hideBalances ? "Rp •••" : formatCurrency(income).replace(",00", "")}
+            </p>
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+              Pemasukan
+            </p>
+          </div>
+          
+          <div className="text-center pl-1 sm:pr-2">
+            <p className="text-sm sm:text-base lg:text-lg font-black text-rose-600 dark:text-rose-400 truncate">
+              {hideBalances ? "Rp •••" : formatCurrency(expense).replace(",00", "")}
+            </p>
+            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">
+              Pengeluaran
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Popular Categories / Transaksi Terbanyak (Matching 'Popular Products' in mock-up) */}
+      <motion.div variants={itemVariants}>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <div>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                Kategori Populer
+              </h2>
+              <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+                Aktivitas berdasarkan mutasi
+              </p>
+            </div>
+            <Link
+              to="/dashboard/transactions"
+              className="text-xs font-bold text-[#059669] hover:text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
+            >
+              Lihat semua <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="rounded-[2.2rem] bg-white dark:bg-slate-900 p-5 shadow-lg shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800/80 space-y-4">
+            {topCategories.list.length > 0 ? (
+              topCategories.list.map((cat, idx) => {
+                const percent = Math.min(Math.round((cat.amount / topCategories.maxAmount) * 100), 100);
+                return (
+                  <div key={cat.name} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {/* Rank circular badge + icon */}
+                        <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700">
+                          <span className="absolute -top-1.5 -left-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[9px] font-black shadow-sm">
+                            {idx + 1}
+                          </span>
+                          {getCategoryIcon(cat.name)}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">
+                            {cat.name}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-sm font-black text-slate-900 dark:text-white">
+                          {hideBalances ? "Rp •••" : formatCurrency(cat.amount)}
+                        </p>
+                        <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+                          {cat.count} transaksi
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Gradient Progress Bar */}
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#059669] to-teal-400 transition-all duration-500"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-xs font-semibold text-slate-400">Belum ada kategori tercatat bulan ini</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Grid for Recent Transactions and Accounts/Budget */}
       <div className="grid gap-6 lg:grid-cols-3">
+        {/* Recent Transactions List */}
         <motion.div variants={itemVariants} className="lg:col-span-2">
-          <Card className="rounded-[2rem] border-0 shadow-xl bg-white dark:bg-slate-900 overflow-hidden h-full">
-            <CardHeader className="border-b border-slate-50 bg-slate-50 dark:bg-slate-800/50/50 pb-4">
-              <CardTitle className="text-lg text-slate-800 dark:text-slate-200">Transaksi Terakhir</CardTitle>
+          <Card className="rounded-[2.2rem] border-0 shadow-lg shadow-slate-200/50 dark:shadow-none bg-white dark:bg-slate-900 overflow-hidden h-full">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg font-black text-slate-900 dark:text-white">Transaksi Terakhir</CardTitle>
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-0.5">Catatan mutasi terbaru</p>
+              </div>
+              <Link to="/dashboard/transactions" className="text-xs font-bold text-[#059669] hover:underline flex items-center gap-1">
+                Semua <ChevronRight className="w-3.5 h-3.5" />
+              </Link>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-5">
               {recentTransactions.length > 0 ? (
-                <div className="space-y-5">
+                <div className="space-y-4">
                   {recentTransactions.map((tx) => (
                     <motion.div
-                      whileHover={{ scale: 1.02 }}
+                      whileHover={{ scale: 1.01 }}
                       key={tx.id}
-                      className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:bg-slate-800/50 transition-colors"
+                      className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800"
                     >
-                      <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-3.5">
                         <div
-                          className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm ${
+                          className={`flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm ${
                             tx.type === "income"
-                              ? "bg-emerald-100 text-emerald-600"
+                              ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
                               : tx.type === "expense"
-                                ? "bg-rose-100 text-rose-600"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 dark:text-slate-500"
+                                ? "bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400"
+                                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                           }`}
                         >
                           {tx.type === "income" ? (
-                            <TrendingUp className="h-6 w-6" />
+                            <TrendingUp className="h-5 w-5" />
                           ) : tx.type === "expense" ? (
-                            <TrendingDown className="h-6 w-6" />
+                            <TrendingDown className="h-5 w-5" />
                           ) : (
-                            <ArrowRightLeft className="h-6 w-6" />
+                            <ArrowRightLeft className="h-5 w-5" />
                           )}
                         </div>
                         <div>
-                          <p className="text-base font-bold text-slate-800 dark:text-slate-200">
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
                             {tx.description}
                           </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 dark:text-slate-500">{tx.category}</span>
-                            <span className="text-xs text-slate-400 dark:text-slate-500">
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">{tx.category}</span>
+                            <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
                               {new Date(tx.date).toLocaleDateString("id-ID", {
                                 day: "numeric",
                                 month: "short",
-                                year: "numeric",
                               })}
                             </span>
                           </div>
                         </div>
                       </div>
                       <div
-                        className={`text-base font-black ${
+                        className={`text-sm sm:text-base font-black ${
                           tx.type === "income"
-                            ? "text-emerald-600"
+                            ? "text-emerald-600 dark:text-emerald-400"
                             : tx.type === "expense"
-                              ? "text-rose-600"
+                              ? "text-rose-600 dark:text-rose-400"
                               : "text-slate-900 dark:text-slate-100"
                         }`}
                       >
@@ -265,59 +483,219 @@ export function Dashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
-                    <PiggyBank className="w-8 h-8 text-slate-300" />
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3">
+                    <PiggyBank className="w-7 h-7 text-slate-300" />
                   </div>
-                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500">Belum ada transaksi bulan ini</p>
+                  <p className="text-xs font-semibold text-slate-400">Belum ada transaksi bulan ini</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </motion.div>
         
+        {/* Right Sidebar Widget: Budget & Accounts */}
         <div className="flex flex-col gap-6 lg:col-span-1">
           <motion.div variants={itemVariants}>
             <BudgetSection />
           </motion.div>
           
           <motion.div variants={itemVariants}>
-            <Card className="rounded-[2rem] border-0 shadow-xl bg-white dark:bg-slate-900 overflow-hidden h-full">
-            <CardHeader className="border-b border-slate-50 bg-slate-50 dark:bg-slate-800/50/50 pb-4">
-              <CardTitle className="text-lg text-slate-800 dark:text-slate-200">Akun & Dompet</CardTitle>
+            <Card className="rounded-[2.2rem] border-0 shadow-lg shadow-slate-200/50 dark:shadow-none bg-white dark:bg-slate-900 overflow-hidden">
+              <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-base font-black text-slate-900 dark:text-white">Akun & Dompet</CardTitle>
+                  <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 mt-0.5">Saldo per rekening</p>
+                </div>
+                <Link to="/dashboard/accounts" className="text-xs font-bold text-[#059669] hover:underline flex items-center gap-0.5">
+                  Kelola <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </CardHeader>
+              <CardContent className="pt-4 pb-5">
+                <div className="space-y-3">
+                  {accounts.map((acc) => (
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      key={acc.id}
+                      className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-900/50 hover:shadow-sm transition-all"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div 
+                          className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm" 
+                          style={{ backgroundColor: acc.color || '#059669' }}
+                        >
+                          <CreditCard className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                            {acc.name}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
+                            {acc.type}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-sm font-black text-slate-900 dark:text-white">
+                        {hideBalances ? maskedValue : formatCurrency(acc.balance)}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+    </motion.div>
+
+    {/* DESKTOP LAYOUT */}
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="hidden lg:block max-w-7xl mx-auto relative z-10">
+      {/* Green Header Background matching the image */}
+      
+
+      {/* Greeting Section */}
+      <div className="flex items-start justify-between text-white mb-8 pt-2">
+        <div>
+          <h1 className="text-3xl font-bold">{greeting}, {userProfile?.name?.split(' ')[0] || firstName} 👋</h1>
+          <p className="text-sm mt-2 opacity-90">"{randomQuote}"</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 mt-4 bg-white/20 rounded-full text-xs font-bold border border-white/30 backdrop-blur-sm">
+            <Clock className="w-3.5 h-3.5" />
+            <span>{currentTimeStr} — Jangan lupa catat keuanganmu hari ini!</span>
+          </div>
+        </div>
+        <button 
+          onClick={toggleHideBalances} 
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full text-sm font-bold border border-white/30 backdrop-blur-sm transition-all"
+        >
+          {hideBalances ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          {hideBalances ? "Tampilkan" : "Sembunyikan"}
+        </button>
+      </div>
+
+      {/* 4 Cards Grid */}
+      <div className="grid grid-cols-4 gap-5 mb-8">
+        <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
+          <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Total Dana</div>
+          <div className="flex justify-between items-start">
+             <h2 className="text-3xl font-black text-slate-900">{hideBalances ? "••••••" : formatCurrency(totalBalance)}</h2>
+             <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                <Wallet className="w-5 h-5 text-indigo-500" />
+             </div>
+          </div>
+          <p className="text-[11px] font-bold text-slate-400 mt-4">Dari {accounts.length} akun aktif</p>
+        </Card>
+
+        <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
+          <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Pemasukan</div>
+          <div className="flex justify-between items-start">
+             <h2 className="text-3xl font-black text-[#059669]">{hideBalances ? "••••••" : formatCurrency(income)}</h2>
+             <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                <TrendingUp className="w-5 h-5 text-[#059669]" />
+             </div>
+          </div>
+          <p className="text-[11px] font-bold text-slate-400 mt-4">Total akumulasi</p>
+        </Card>
+
+        <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
+          <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Pengeluaran</div>
+          <div className="flex justify-between items-start">
+             <h2 className="text-3xl font-black text-rose-600">{hideBalances ? "••••••" : formatCurrency(expense)}</h2>
+             <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+                <TrendingDown className="w-5 h-5 text-rose-600" />
+             </div>
+          </div>
+          <p className="text-[11px] font-bold text-slate-400 mt-4">Total akumulasi</p>
+        </Card>
+
+        <Card className="rounded-[1.5rem] border-0 shadow-lg bg-[#047857] text-white p-5">
+          <div className="text-[11px] font-bold text-emerald-200 mb-2 uppercase tracking-wider">Cashflow</div>
+          <div className="flex justify-between items-start">
+             <h2 className="text-3xl font-black">{hideBalances ? "••••••" : formatCurrency(income - expense)}</h2>
+             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <Activity className="w-5 h-5 text-white" />
+             </div>
+          </div>
+          <p className="text-[11px] font-bold text-emerald-200 mt-4">Selisih masuk & keluar</p>
+        </Card>
+      </div>
+
+      {/* Bottom Section */}
+      <div className="grid grid-cols-3 gap-6">
+        <div className="col-span-2">
+          {/* Transaksi Terakhir */}
+          <Card className="rounded-[1.5rem] border-0 shadow-lg shadow-slate-200/50 bg-white dark:bg-slate-900 h-[calc(100%-2rem)]">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+              <CardTitle className="text-base font-black text-slate-900 dark:text-white">Transaksi Terakhir</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
-              <div className="space-y-4">
+            <CardContent className="pt-5">
+              {recentTransactions.length > 0 ? (
+                <div className="space-y-4">
+                  {recentTransactions.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                      <div className="flex items-center space-x-3.5">
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl shadow-sm ${tx.type === "income" ? "bg-emerald-100 text-emerald-600" : tx.type === "expense" ? "bg-rose-100 text-rose-600" : "bg-slate-100 text-slate-600"}`}>
+                          {tx.type === "income" ? <TrendingUp className="h-5 w-5" /> : tx.type === "expense" ? <TrendingDown className="h-5 w-5" /> : <ArrowRightLeft className="h-5 w-5" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{tx.description}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600">{tx.category}</span>
+                            <span className="text-[11px] font-medium text-slate-400">
+                              {new Date(tx.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className={`text-sm sm:text-base font-black ${tx.type === "income" ? "text-emerald-600" : tx.type === "expense" ? "text-rose-600" : "text-slate-900"}`}>
+                        {tx.type === "expense" ? "-" : tx.type === "income" ? "+" : ""}{formatCurrency(tx.amount)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mb-3">
+                    <PiggyBank className="w-7 h-7 text-slate-300" />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-400">Belum ada transaksi bulan ini</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="col-span-1 space-y-6">
+          <BudgetSection />
+          
+          <Card className="rounded-[1.5rem] border-0 shadow-lg shadow-slate-200/50 bg-white dark:bg-slate-900">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4 flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-black text-slate-900 dark:text-white">Akun & Dompet</CardTitle>
+              <Link to="/dashboard/accounts" className="text-2xl text-emerald-200 hover:text-[#059669] transition-colors leading-none pb-1">+</Link>
+            </CardHeader>
+            <CardContent className="pt-4 pb-5">
+              <div className="space-y-3">
                 {accounts.map((acc) => (
-                   <motion.div
-                   whileHover={{ scale: 1.02 }}
-                   key={acc.id}
-                   className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-teal-100 hover:shadow-md transition-all"
-                 >
-                   <div className="flex items-center space-x-4">
-                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-sm" style={{ backgroundColor: acc.color || '#059669' }}>
-                       <CreditCard className="h-6 w-6" />
-                     </div>
-                     <div>
-                       <p className="text-base font-bold text-slate-800 dark:text-slate-200">
-                         {acc.name}
-                       </p>
-                       <p className="text-xs font-medium text-slate-400 dark:text-slate-500 capitalize mt-0.5">
-                         {acc.type}
-                       </p>
-                     </div>
-                   </div>
-                   <div className="text-base font-black text-slate-800 dark:text-slate-200">
-                     {hideBalances ? maskedValue : formatCurrency(acc.balance)}
-                   </div>
-                 </motion.div>
+                  <div key={acc.id} className="flex items-center justify-between p-3 rounded-2xl border border-slate-100">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm" style={{ backgroundColor: acc.color || '#059669' }}>
+                        <CreditCard className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">{acc.name}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{acc.type}</p>
+                      </div>
+                    </div>
+                    <div className="text-sm font-black text-slate-900">
+                      {hideBalances ? maskedValue : formatCurrency(acc.balance)}
+                    </div>
+                  </div>
                 ))}
               </div>
             </CardContent>
           </Card>
-        </motion.div>
         </div>
       </div>
     </motion.div>
-  );
-}
+  
+    </>
+  );}

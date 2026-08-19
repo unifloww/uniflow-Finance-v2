@@ -30,6 +30,7 @@ export function UserLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const isDashboard = location.pathname === '/dashboard';
 
   const isTrialExpired = useMemo(() => {
     if (userProfile?.role === 'superadmin') return false;
@@ -104,9 +105,9 @@ export function UserLayout() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#059669] pb-16 lg:pb-0">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 pb-16 lg:pb-0">
       {/* Sidebar for Desktop */}
-      <aside className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:border-[#10b981] lg:bg-[#059669] transition-all duration-300 z-30 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}`}>
+      <aside className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:border-[#10b981] lg:bg-gradient-to-b lg:from-[#059669] lg:to-[#046a4e] transition-all duration-300 z-30 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}`}>
         <div className={`flex h-32 items-center justify-center border-b border-[#10b981] ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
           <img src="https://firebasestorage.googleapis.com/v0/b/uniflow/o/Uniflow%20White.png?alt=media&token=ed8e2972-f297-4861-9920-c8145506122d" alt="UniFlow" className={`w-auto object-contain drop-shadow-xl hover:scale-105 transition-all cursor-pointer ${isSidebarCollapsed ? 'h-10 sm:h-12' : 'h-24 sm:h-28'}`} />
           
@@ -178,28 +179,28 @@ export function UserLayout() {
       </aside>
 
       {/* Main Content */}
-      <main className={`flex flex-1 flex-col overflow-y-auto overflow-x-hidden pt-20 lg:pt-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
+      <main className={`relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden pt-20 lg:pt-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
+        {isDashboard && <div className="hidden lg:block absolute top-0 left-0 right-0 bg-[#059669] h-[340px] z-0 shadow-sm pointer-events-none" />}
+        <div className="relative z-10 flex flex-col flex-1 h-full">
         {/* Mobile Header */}
-        <header className="fixed top-0 inset-x-0 z-50 flex h-20 items-center justify-between border-b border-[#10b981] bg-[#059669] px-4 py-2 lg:hidden shadow-md">
+        <header className="fixed top-0 inset-x-0 z-50 flex h-20 items-center justify-between border-b border-emerald-600/40 bg-gradient-to-r from-[#059669] to-teal-700 px-4 py-2 lg:hidden shadow-md">
           <div className="flex items-center">
             <img src="https://firebasestorage.googleapis.com/v0/b/uniflow/o/Uniflow%20White.png?alt=media&token=ed8e2972-f297-4861-9920-c8145506122d" alt="UniFlow" className="h-16 w-auto max-w-[200px] object-contain drop-shadow-md scale-125 origin-left ml-2" />
           </div>
           <div className="flex items-center space-x-2">
             {renderSyncIndicator(true)}
             <ThemeToggle />
-                             <Link to="/dashboard/profile" className="flex items-center justify-center h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 transition-colors border border-white/20">
-              <span className="text-white text-xs font-bold">
-                {userProfile?.name?.charAt(0).toUpperCase() || "U"}
-              </span>
+            <Link to="/dashboard/profile" className="flex items-center justify-center h-9 w-9 rounded-full bg-white/20 hover:bg-white/30 transition-colors border border-white/30 text-white text-xs font-bold shadow-sm">
+              {userProfile?.name?.charAt(0).toUpperCase() || "U"}
             </Link>
             <button onClick={(e) => { e.preventDefault(); handleLogout(); }} className="text-white bg-rose-500 hover:bg-rose-600 p-2 rounded-full shadow-md transition-colors z-50 relative cursor-pointer">
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-4 w-4" />
             </button>
           </div>
         </header>
 
         {/* Desktop Header */}
-        <header className="hidden lg:flex sticky top-0 z-10 h-16 items-center justify-between bg-transparent px-8 mt-2">
+        <header className="hidden lg:flex sticky top-0 z-20 h-16 items-center justify-between bg-transparent px-8 mt-2">
            <button 
              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
              className="text-white hover:bg-white/10 p-2 rounded-full transition-colors flex items-center justify-center bg-[#059669] shadow-sm border border-[#10b981]"
@@ -233,10 +234,11 @@ export function UserLayout() {
             </motion.div>
           </AnimatePresence>
         </div>
+        </div>
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-[#10b981] bg-[#059669] shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] lg:hidden px-1 pb-safe">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-emerald-600/40 bg-gradient-to-r from-[#059669] to-teal-700 shadow-[0_-4px_12px_rgba(0,0,0,0.15)] lg:hidden px-1 pb-safe">
         {navItems.map((item) => {
           // Now showing all 6 icons
           
@@ -254,11 +256,11 @@ export function UserLayout() {
               {isActive && (
                 <motion.div
                   layoutId="mobile-nav-active"
-                  className="absolute top-0 w-12 h-1 bg-white rounded-b-full"
+                  className="absolute top-0 w-12 h-1 bg-white rounded-b-full shadow-sm"
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
               )}
-              <div className={`flex items-center justify-center p-1.5 rounded-full ${isActive ? 'bg-black/10' : ''} transition-colors`}>
+              <div className={`flex items-center justify-center p-1.5 rounded-full ${isActive ? 'bg-black/15 shadow-inner' : ''} transition-colors`}>
                 <Icon className={`h-5 w-5 mb-0.5 ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-200/80'}`} />
               </div>
               <span className={`text-[9px] font-bold mt-0.5 ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-200/80'}`}>
@@ -271,10 +273,10 @@ export function UserLayout() {
 
       {/* Floating Action Button (FAB) */}
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
         onClick={() => navigate('/dashboard/transactions', { state: { openAdd: true } })}
-        className="fixed bottom-20 lg:bottom-8 right-4 lg:right-8 h-14 w-14 bg-emerald-100 hover:bg-white text-[#047857] rounded-full shadow-xl shadow-emerald-900/40 flex items-center justify-center z-50 transition-colors"
+        className="fixed bottom-20 lg:bottom-8 right-4 lg:right-8 h-14 w-14 bg-gradient-to-tr from-[#059669] to-teal-400 hover:from-[#047857] hover:to-teal-500 text-white rounded-full shadow-2xl shadow-emerald-900/50 flex items-center justify-center z-50 transition-all border-2 border-white dark:border-slate-800 cursor-pointer"
       >
         <Plus className="h-6 w-6 font-bold" />
       </motion.button>
