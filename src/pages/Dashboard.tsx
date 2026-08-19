@@ -194,12 +194,6 @@ export function Dashboard() {
           </h1>
         </div>
         
-        <Link 
-          to="/dashboard/profile"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-tr from-[#059669] to-teal-400 text-white font-black text-base shadow-lg shadow-emerald-600/30 hover:scale-105 transition-all border-2 border-white dark:border-slate-800"
-        >
-          {userInitial}
-        </Link>
       </motion.div>
 
       {/* Main Pocket / Wallet Card - Signature Emerald Gradient matching mockup */}

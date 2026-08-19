@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
-  LayoutDashboard, 
+  Home, 
   Wallet, 
   ArrowRightLeft, 
   Target, 
@@ -71,7 +71,7 @@ export function UserLayout() {
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Dashboard', path: '/dashboard', icon: Home },
     { name: 'Transaksi', path: '/dashboard/transactions', icon: ArrowRightLeft },
     { name: 'Akun', path: '/dashboard/accounts', icon: Wallet },
     { name: 'Impian', path: '/dashboard/goals', icon: Target },
@@ -237,46 +237,65 @@ export function UserLayout() {
         </div>
       </main>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-emerald-600/40 bg-gradient-to-r from-[#059669] to-teal-700 shadow-[0_-4px_12px_rgba(0,0,0,0.15)] lg:hidden px-1 pb-safe">
-        {navItems.map((item) => {
-          // Now showing all 6 icons
+                        {/* Mobile Bottom Navigation */}
+      <div className="fixed bottom-6 left-4 right-4 z-50 lg:hidden">
+        <nav className="flex h-[72px] items-center justify-between bg-emerald-600/95 dark:bg-emerald-900/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(5,150,105,0.4)] dark:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.6)] border border-emerald-500/50 dark:border-emerald-700/50 px-5">
+          {[navItems[0], navItems[2]].map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+            return (
+              <Link
+                key={item.name}
+                to={item.path}
+                className="flex flex-col items-center justify-center w-[4rem] h-full gap-1 transition-all"
+              >
+                <div className={`flex items-center justify-center p-1.5 rounded-full transition-all duration-300 ${isActive ? 'bg-emerald-700/50 dark:bg-emerald-800/50 shadow-inner' : ''}`}>
+                  <Icon className={`h-[22px] w-[22px] ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-100/70'}`} strokeWidth={isActive ? 2.5 : 2} />
+                </div>
+                <span className={`text-[9px] font-semibold transition-all duration-300 ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-100/70'}`}>
+                  {item.name === 'Dashboard' ? 'Home' : item.name}
+                </span>
+              </Link>
+            );
+          })}
           
-          const Icon = item.icon;
-          const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
-          
-          return (
-            <Link
-              key={item.name}
-              to={item.path}
-              className={`relative flex flex-col items-center justify-center flex-1 h-full pt-1 ${
-                isActive ? 'text-white' : 'text-emerald-200/80 hover:text-white'
-              }`}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="mobile-nav-active"
-                  className="absolute top-0 w-12 h-1 bg-white rounded-b-full shadow-sm"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <div className={`flex items-center justify-center p-1.5 rounded-full ${isActive ? 'bg-black/15 shadow-inner' : ''} transition-colors`}>
-                <Icon className={`h-5 w-5 mb-0.5 ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-200/80'}`} />
-              </div>
-              <span className={`text-[9px] font-bold mt-0.5 ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-200/80'}`}>
-                {item.name}
-              </span>
-            </Link>
-          );
-        })}
-      </nav>
+          {/* Soft UI Central Floating Button */}
+          <button
+            onClick={() => navigate('/dashboard/transactions', { state: { openAdd: true } })}
+            className="flex flex-col items-center justify-center -mt-10 relative z-50 transition-transform active:scale-90"
+          >
+            <div className="h-16 w-16 rounded-full bg-white dark:bg-slate-800 shadow-[0_12px_24px_-8px_rgba(0,0,0,0.3)] flex items-center justify-center text-emerald-600 border-[5px] border-emerald-600 dark:border-emerald-900 ring-1 ring-emerald-500/50">
+              <Plus className="h-7 w-7" strokeWidth={3} />
+            </div>
+          </button>
 
-      {/* Floating Action Button (FAB) */}
+          {[navItems[3], navItems[4]].map((item) => {
+            const Icon = item.icon;
+            const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+            return (
+              <Link
+                key={item.name}
+                to={item.path}
+                className="flex flex-col items-center justify-center w-[4rem] h-full gap-1 transition-all"
+              >
+                <div className={`flex items-center justify-center p-1.5 rounded-full transition-all duration-300 ${isActive ? 'bg-emerald-700/50 dark:bg-emerald-800/50 shadow-inner' : ''}`}>
+                  <Icon className={`h-[22px] w-[22px] ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-100/70'}`} strokeWidth={isActive ? 2.5 : 2} />
+                </div>
+                <span className={`text-[9px] font-semibold transition-all duration-300 ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-100/70'}`}>
+                  {item.name}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Floating Action Button (FAB) - ONLY DESKTOP */}
       <motion.button
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.92 }}
         onClick={() => navigate('/dashboard/transactions', { state: { openAdd: true } })}
-        className="fixed bottom-20 lg:bottom-8 right-4 lg:right-8 h-14 w-14 bg-gradient-to-tr from-[#059669] to-teal-400 hover:from-[#047857] hover:to-teal-500 text-white rounded-full shadow-2xl shadow-emerald-900/50 flex items-center justify-center z-50 transition-all border-2 border-white dark:border-slate-800 cursor-pointer"
+        className="fixed hidden lg:flex bottom-8 right-8 h-14 w-14 bg-gradient-to-tr from-[#059669] to-teal-400 hover:from-[#047857] hover:to-teal-500 text-white rounded-full shadow-2xl shadow-emerald-900/50 items-center justify-center z-50 transition-all border-2 border-white dark:border-slate-800 cursor-pointer"
       >
         <Plus className="h-6 w-6 font-bold" />
       </motion.button>
