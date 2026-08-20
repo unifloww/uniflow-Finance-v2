@@ -29,7 +29,7 @@ import {
   Home,
   Briefcase,
   Zap,
-  Tag
+  Tag, FileText, Target
 } from "lucide-react";
 import {  formatCurrency } from "../lib/utils";
 import {  motion } from "motion/react";
@@ -52,11 +52,13 @@ const getCategoryIcon = (categoryName: string) => {
   const cat = categoryName.toLowerCase();
   if (cat.includes("kopi") || cat.includes("coffee") || cat.includes("cafe")) return <Coffee className="w-5 h-5 text-amber-600" />;
   if (cat.includes("makan") || cat.includes("food") || cat.includes("restoran") || cat.includes("kuliner")) return <Utensils className="w-5 h-5 text-orange-500" />;
-  if (cat.includes("belanja") || cat.includes("shopping") || cat.includes("mall")) return <ShoppingBag className="w-5 h-5 text-emerald-500" />;
+  if (cat.includes("belanja") || cat.includes("shopping") || cat.includes("mall") || cat.includes("stok") || cat.includes("produk")) return <ShoppingBag className="w-5 h-5 text-emerald-500" />;
   if (cat.includes("transport") || cat.includes("bensin") || cat.includes("ojek") || cat.includes("kendaraan")) return <Car className="w-5 h-5 text-blue-500" />;
-  if (cat.includes("gaji") || cat.includes("salary") || cat.includes("bisnis") || cat.includes("proyek")) return <Briefcase className="w-5 h-5 text-teal-600" />;
-  if (cat.includes("tagihan") || cat.includes("listrik") || cat.includes("air") || cat.includes("internet")) return <Zap className="w-5 h-5 text-yellow-500" />;
+  if (cat.includes("gaji") || cat.includes("salary") || cat.includes("karyawan") || cat.includes("jasa")) return <Briefcase className="w-5 h-5 text-teal-600" />;
+  if (cat.includes("tagihan") || cat.includes("listrik") || cat.includes("air") || cat.includes("internet") || cat.includes("operasional")) return <Zap className="w-5 h-5 text-yellow-500" />;
   if (cat.includes("rumah") || cat.includes("sewa") || cat.includes("kost")) return <Home className="w-5 h-5 text-indigo-500" />;
+  if (cat.includes("pemasaran") || cat.includes("marketing")) return <Target className="w-5 h-5 text-rose-500" />;
+  if (cat.includes("pajak") || cat.includes("tax")) return <FileText className="w-5 h-5 text-slate-500" />;
   return <Tag className="w-5 h-5 text-emerald-600" />;
 };
 
@@ -90,9 +92,54 @@ export function Dashboard() {
     return financialQuotes[Math.floor(Math.random() * financialQuotes.length)];
   }, []);
 
+  const { accounts, transactions, hideBalances, toggleHideBalances, activeWorkspace } = useData();
   const firstName = userProfile?.name?.split(" ")[0] || currentUser?.email?.split("@")[0] || "Teman";
+  const displayName = activeWorkspace === "business" ? (userProfile?.businessName || "Bisnis Anda") : (userProfile?.name || firstName);
+  const displayFirstName = activeWorkspace === "business" ? (userProfile?.businessName || "Bisnis") : firstName;
   const userInitial = userProfile?.name?.charAt(0)?.toUpperCase() || firstName.charAt(0).toUpperCase() || "U";
-  const { accounts, transactions, hideBalances, toggleHideBalances } = useData();
+
+
+  const themeClasses = activeWorkspace === 'business' 
+    ? {
+        gradientTop: 'from-cyan-400 via-[#0891b2] to-[#0e7490]',
+        gradientMain: 'from-[#0891b2] via-[#0e7490] to-[#155e75]',
+        borderLight: 'border-cyan-300/40',
+        borderMain: 'border-cyan-500/30',
+        textLight: 'text-cyan-100/90',
+        textDark: 'text-cyan-900',
+        shadowMain: 'shadow-cyan-950/40',
+        textAccent: 'text-cyan-200/90',
+        textAccentBright: 'text-cyan-200',
+        textPrimary: 'text-cyan-600',
+        textPrimaryDark: 'text-[#0891b2]',
+        bgLight: 'bg-cyan-100',
+        bgDark: 'dark:bg-cyan-950/50',
+        textDarkPrimary: 'dark:text-cyan-400',
+        hoverBorder: 'hover:border-cyan-200 dark:hover:border-cyan-900/50',
+        hoverText: 'hover:text-cyan-700',
+        iconBg: 'bg-cyan-50',
+        plusText: 'text-cyan-200 hover:text-[#0891b2]'
+      }
+    : {
+        gradientTop: 'from-emerald-400 via-[#10b981] to-[#059669]',
+        gradientMain: 'from-[#059669] via-[#047857] to-[#046246]',
+        borderLight: 'border-emerald-300/40',
+        borderMain: 'border-emerald-500/30',
+        textLight: 'text-emerald-100/90',
+        textDark: 'text-emerald-900',
+        shadowMain: 'shadow-emerald-950/40',
+        textAccent: 'text-emerald-200/90',
+        textAccentBright: 'text-emerald-200',
+        textPrimary: 'text-emerald-600',
+        textPrimaryDark: 'text-[#059669]',
+        bgLight: 'bg-emerald-100',
+        bgDark: 'dark:bg-emerald-950/50',
+        textDarkPrimary: 'dark:text-emerald-400',
+        hoverBorder: 'hover:border-emerald-200 dark:hover:border-emerald-900/50',
+        hoverText: 'hover:text-emerald-700',
+        iconBg: 'bg-emerald-50',
+        plusText: 'text-emerald-200 hover:text-[#059669]'
+      };
 
   const totalBalance = useMemo(() => {
     return accounts.reduce((sum, acc) => sum + acc.balance, 0);
@@ -151,6 +198,36 @@ export function Dashboard() {
     return { list: list.slice(0, 4), maxAmount };
   }, [transactions]);
 
+  const topBusinessCategories = useMemo(() => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+
+    const catMap: { [key: string]: { name: string; amount: number } } = {};
+    
+    transactions.forEach(tx => {
+      const txDate = new Date(tx.date);
+      if (
+        tx.type === 'income' &&
+        txDate.getMonth() === currentMonth &&
+        txDate.getFullYear() === currentYear
+      ) {
+        const key = tx.category || "Lainnya";
+        if (!catMap[key]) {
+          catMap[key] = { name: key, amount: 0 };
+        }
+        catMap[key].amount += tx.amount;
+      }
+    });
+
+    const list = Object.values(catMap)
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 3);
+      
+    const maxAmount = list.length > 0 ? Math.max(...list.map(l => l.amount)) : 1;
+
+    return { list, maxAmount };
+  }, [transactions]);
+
   const recentTransactions = useMemo(() => {
     return [...transactions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -199,16 +276,16 @@ export function Dashboard() {
       {/* Main Pocket / Wallet Card - Signature Emerald Gradient matching mockup */}
       <motion.div variants={itemVariants} className="relative pt-2">
         {/* Back Card peeking out from the pocket */}
-        <div className="mx-4 sm:mx-8 rounded-t-3xl sm:rounded-t-[2.2rem] bg-gradient-to-r from-emerald-400 via-[#10b981] to-[#059669] pt-4 sm:pt-5 pb-8 sm:pb-9 px-5 sm:px-7 text-white flex items-center justify-between shadow-md border-t border-x border-emerald-300/40 relative overflow-hidden">
+        <div className={`mx-4 sm:mx-8 rounded-t-3xl sm:rounded-t-[2.2rem] bg-gradient-to-r ${themeClasses.gradientTop} pt-4 sm:pt-5 pb-8 sm:pb-9 px-5 sm:px-7 text-white flex items-center justify-between shadow-md border-t border-x ${themeClasses.borderLight} relative overflow-hidden`}>
           {/* Soft shine */}
           <div className="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 rounded-full bg-white/20 blur-xl pointer-events-none" />
           
           <div className="space-y-0.5 relative z-10">
-            <p className="text-[11px] sm:text-xs font-bold text-emerald-100/90 leading-tight">
+            <p className={`text-[11px] sm:text-xs font-bold ${themeClasses.textLight} leading-tight`}>
               {greeting},
             </p>
             <h3 className="text-base sm:text-xl font-black tracking-tight text-white drop-shadow-sm leading-tight truncate max-w-[200px] sm:max-w-none">
-              {userProfile?.name || firstName}
+              {displayName}
             </h3>
           </div>
 
@@ -217,14 +294,14 @@ export function Dashboard() {
               PRO
             </span>
           ) : (
-            <Link to="/dashboard/profile#pricing" className="relative z-10 text-[10px] sm:text-xs font-black tracking-wider text-emerald-900 uppercase drop-shadow-sm bg-yellow-400 hover:bg-yellow-300 px-3 py-1.5 rounded-full border border-yellow-300 shadow-lg shadow-yellow-500/20 transition-all active:scale-95 flex items-center gap-1">
+            <Link to="/dashboard/profile#pricing" className={`relative z-10 text-[10px] sm:text-xs font-black tracking-wider ${themeClasses.textDark} uppercase drop-shadow-sm bg-yellow-400 hover:bg-yellow-300 px-3 py-1.5 rounded-full border border-yellow-300 shadow-lg shadow-yellow-500/20 transition-all active:scale-95 flex items-center gap-1`}>
               <Zap className="w-3 h-3" /> Upgrade
             </Link>
           )}
         </div>
 
         {/* Front Pocket Flap */}
-        <div className="-mt-5 relative z-10 rounded-[2.3rem] sm:rounded-[2.6rem] bg-gradient-to-b from-[#059669] via-[#047857] to-[#046246] p-5 sm:p-7 text-white shadow-2xl shadow-emerald-950/40 border border-emerald-500/30 overflow-hidden">
+        <div className={`-mt-5 relative z-10 rounded-[2.3rem] sm:rounded-[2.6rem] bg-gradient-to-b ${themeClasses.gradientMain} p-5 sm:p-7 text-white shadow-2xl ${themeClasses.shadowMain} border ${themeClasses.borderMain} overflow-hidden`}>
           {/* Curved top scoop of the pocket with dashed stitch line */}
           <svg
             viewBox="0 0 400 36"
@@ -303,6 +380,26 @@ export function Dashboard() {
           </div>
         </div>
       </motion.div>
+
+      
+      {activeWorkspace === 'business' && (
+        <motion.div variants={itemVariants} className="mb-6">
+          <Link to="/dashboard/invoice" className="flex items-center justify-between bg-cyan-600 hover:bg-cyan-700 text-white rounded-[2rem] p-5 shadow-lg shadow-cyan-900/20 transition-all active:scale-[0.98]">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Buat Invoice Baru</h3>
+                <p className="text-cyan-100 text-xs font-medium">Buat dan unduh tagihan PDF untuk klien</p>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
+              <ChevronRight className="w-5 h-5" />
+            </div>
+          </Link>
+        </motion.div>
+      )}
 
       {/* 3-Column Stats Row (Sales Today / Items Sold / Low Stock equivalent) */}
       <motion.div variants={itemVariants}>
@@ -496,6 +593,40 @@ export function Dashboard() {
         
         {/* Right Sidebar Widget: Budget & Accounts */}
         <div className="flex flex-col gap-6 lg:col-span-1">
+          {activeWorkspace === 'business' && (
+            <motion.div variants={itemVariants}>
+              <Card className="rounded-[1.5rem] border-0 shadow-lg shadow-cyan-200/50 bg-white dark:bg-slate-900 border-t-4 border-t-cyan-500">
+                <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <CardTitle className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-cyan-500" /> Kinerja Kategori
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 pb-5">
+                  <div className="space-y-4">
+                    {topBusinessCategories.list.length > 0 ? (
+                      topBusinessCategories.list.map((cat, idx) => {
+                        const percent = Math.min(Math.round((cat.amount / topBusinessCategories.maxAmount) * 100), 100);
+                        return (
+                          <div key={cat.name} className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-bold text-slate-800 dark:text-slate-200">{cat.name}</span>
+                              <span className="font-black text-slate-900 dark:text-white">{hideBalances ? "Rp •••" : formatCurrency(cat.amount)}</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div className="h-full bg-cyan-500 rounded-full transition-all" style={{ width: `${percent}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-xs text-center font-semibold text-slate-400 py-2">Belum ada data pendapatan bulan ini</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           <motion.div variants={itemVariants}>
             <BudgetSection />
           </motion.div>
@@ -556,7 +687,7 @@ export function Dashboard() {
       {/* Greeting Section */}
       <div className="flex items-start justify-between text-white mb-8 pt-2">
         <div>
-          <h1 className="text-3xl font-bold">{greeting}, {userProfile?.name?.split(' ')[0] || firstName} 👋</h1>
+          <h1 className="text-3xl font-bold">{greeting}, {displayFirstName} 👋</h1>
           <p className="text-sm mt-2 opacity-90">"{randomQuote}"</p>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 mt-4 bg-white/20 rounded-full text-xs font-bold border border-white/30 backdrop-blur-sm">
             <Clock className="w-3.5 h-3.5" />
@@ -571,6 +702,26 @@ export function Dashboard() {
           {hideBalances ? "Tampilkan" : "Sembunyikan"}
         </button>
       </div>
+
+      
+      {activeWorkspace === 'business' && (
+        <motion.div variants={itemVariants} className="mb-6">
+          <Link to="/dashboard/invoice" className="flex items-center justify-between bg-cyan-600 hover:bg-cyan-700 text-white rounded-[2rem] p-5 shadow-lg shadow-cyan-900/20 transition-all active:scale-[0.98]">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Buat Invoice Baru</h3>
+                <p className="text-cyan-100 text-xs font-medium">Buat dan unduh tagihan PDF untuk klien</p>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
+              <ChevronRight className="w-5 h-5" />
+            </div>
+          </Link>
+        </motion.div>
+      )}
 
       {/* 4 Cards Grid */}
       <div className="grid grid-cols-4 gap-5 mb-8">
@@ -665,6 +816,38 @@ export function Dashboard() {
         </div>
         
         <div className="col-span-1 space-y-6">
+          {activeWorkspace === 'business' && (
+            <Card className="rounded-[1.5rem] border-0 shadow-lg shadow-cyan-200/50 bg-white dark:bg-slate-900 border-t-4 border-t-cyan-500">
+              <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+                <CardTitle className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-cyan-500" /> Kinerja Kategori
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-4 pb-5">
+                <div className="space-y-4">
+                  {topBusinessCategories.list.length > 0 ? (
+                    topBusinessCategories.list.map((cat, idx) => {
+                      const percent = Math.min(Math.round((cat.amount / topBusinessCategories.maxAmount) * 100), 100);
+                      return (
+                        <div key={cat.name} className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{cat.name}</span>
+                            <span className="font-black text-slate-900 dark:text-white">{hideBalances ? "Rp •••" : formatCurrency(cat.amount)}</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-cyan-500 rounded-full transition-all" style={{ width: `${percent}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-xs text-center font-semibold text-slate-400 py-2">Belum ada data pendapatan bulan ini</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <BudgetSection />
           
           <Card className="rounded-[1.5rem] border-0 shadow-lg shadow-slate-200/50 bg-white dark:bg-slate-900">

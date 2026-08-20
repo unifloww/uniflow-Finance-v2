@@ -29,7 +29,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { motion, AnimatePresence } from "motion/react";
 
-const EXPENSE_CATEGORIES = [
+const expenseCategories = [
   "Makanan & Minuman",
   "Transportasi",
   "Belanja",
@@ -40,7 +40,7 @@ const EXPENSE_CATEGORIES = [
   "Lainnya"
 ];
 
-const INCOME_CATEGORIES = [
+const incomeCategories = [
   "Gaji",
   "Bonus",
   "Investasi",
@@ -49,7 +49,9 @@ const INCOME_CATEGORIES = [
 ];
 
 export function Transactions() {
-  const { transactions, accounts, addTransaction, deleteTransaction } = useData();
+  const { transactions, accounts, addTransaction, deleteTransaction, activeWorkspace } = useData();
+  const expenseCategories = activeWorkspace === 'business' ? ['Pembelian Stok/Bahan', 'Gaji Karyawan', 'Operasional', 'Pemasaran', 'Sewa Tempat', 'Pajak', 'Lainnya'] : ['Makanan & Minuman', 'Transportasi', 'Belanja', 'Tagihan & Utilitas', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
+  const incomeCategories = activeWorkspace === 'business' ? ['Penjualan Produk', 'Pendapatan Jasa', 'Pendapatan Lainnya'] : ['Gaji', 'Bonus', 'Investasi', 'Pemberian', 'Lainnya'];
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -65,6 +67,9 @@ export function Transactions() {
   );
   const [filterPeriod, setFilterPeriod] = useState<"all" | "daily" | "weekly" | "monthly" | "custom">("all");
   const [customDateRange, setCustomDateRange] = useState({ start: "", end: "" });
+  useEffect(() => {
+    setCategory(type === "expense" ? expenseCategories[0] : incomeCategories[0]);
+  }, [type, activeWorkspace]);
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
   
   const [isScanning, setIsScanning] = useState(false);
@@ -151,7 +156,7 @@ export function Transactions() {
 
   const handleTypeChange = (newType: "income" | "expense") => {
     setType(newType);
-    setCategory(newType === "expense" ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0]);
+    
   };
 
   const filteredTransactions = useMemo(() => {
@@ -313,14 +318,14 @@ export function Transactions() {
             onClick={exportToCSV} 
             className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm font-bold transition-all"
           >
-            <FileText className="mr-2 h-4 w-4 text-emerald-600" />
+            <FileText className="mr-2 h-4 w-4 ${activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600'}" />
             CSV
           </Button>
           <Button 
             onClick={exportToPDF} 
             className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm font-bold transition-all"
           >
-            <FileDown className="mr-2 h-4 w-4 text-emerald-600" />
+            <FileDown className="mr-2 h-4 w-4 ${activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600'}" />
             PDF
           </Button>
           <Button
@@ -341,7 +346,7 @@ export function Transactions() {
             placeholder="Cari catatan atau kategori..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-full h-11 w-full shadow-sm focus-visible:ring-2 focus-visible:ring-[#059669]"
+            className="pl-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-full h-11 w-full shadow-sm focus-visible:ring-2 ${activeWorkspace === 'business' ? 'focus-visible:ring-cyan-600' : 'focus-visible:ring-[#059669]'}"
           />
         </div>
         <div className="flex flex-wrap gap-2 pb-2 md:pb-0 items-center">
@@ -397,7 +402,7 @@ export function Transactions() {
         <Card className="rounded-[1.5rem] border-0 shadow-lg bg-white dark:bg-slate-900 overflow-hidden">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="h-12 w-12 rounded-full bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center shrink-0">
-              <TrendingUp className="h-6 w-6 text-emerald-600" />
+              <TrendingUp className="h-6 w-6 ${activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600'}" />
             </div>
             <div>
               <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1">Total Pemasukan</p>
@@ -481,14 +486,14 @@ export function Transactions() {
                         <button
                           type="button"
                           className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${type === 'expense' ? 'bg-white dark:bg-slate-900 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
-                          onClick={() => { setType('expense'); setCategory(EXPENSE_CATEGORIES[0]); }}
+                          onClick={() => setType('expense')}
                         >
                           Pengeluaran
                         </button>
                         <button
                           type="button"
-                          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${type === 'income' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
-                          onClick={() => { setType('income'); setCategory(INCOME_CATEGORIES[0]); }}
+                          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${type === 'income' ? `bg-white dark:bg-slate-900 ${activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600'} shadow-sm` : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
+                          onClick={() => setType('income')}
                         >
                           Pemasukan
                         </button>
@@ -511,7 +516,7 @@ export function Transactions() {
                       <select
                         value={accountId}
                         onChange={(e) => setAccountId(e.target.value)}
-                        className="w-full flex h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059669]"
+                        className={`w-full flex h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 ${activeWorkspace === 'business' ? 'focus-visible:ring-cyan-600' : 'focus-visible:ring-[#059669]'}`}
                         required
                       >
                         {accounts.length === 0 && <option value="" disabled>Belum ada akun, tambahkan di menu Akun</option>}
@@ -528,10 +533,10 @@ export function Transactions() {
                       <select
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
-                        className="w-full flex h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059669]"
+                        className="w-full flex h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 ${activeWorkspace === 'business' ? 'focus-visible:ring-cyan-600' : 'focus-visible:ring-[#059669]'}"
                         required
                       >
-                        {(type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).map(cat => (
+                        {(type === 'expense' ? expenseCategories : incomeCategories).map(cat => (
                           <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </select>
@@ -594,7 +599,7 @@ export function Transactions() {
                         <div
                           className={`flex shrink-0 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl shadow-sm ${
                             tx.type === "income"
-                              ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600"
+                              ? "bg-emerald-50 dark:bg-emerald-950/50 ${activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600'}"
                               : "bg-rose-50 dark:bg-rose-950/50 text-rose-600"
                           }`}
                         >
@@ -629,7 +634,7 @@ export function Transactions() {
                         <div
                           className={`text-xs sm:text-base font-black whitespace-nowrap ${
                             tx.type === "income"
-                              ? "text-emerald-600"
+                              ? "${activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600'}"
                               : "text-rose-600"
                           }`}
                         >

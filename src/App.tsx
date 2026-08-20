@@ -30,6 +30,7 @@ import { Accounts } from "./pages/Accounts";
 import { Goals } from "./pages/Goals";
 import { Analytics } from "./pages/Analytics";
 import { Profile } from "./pages/Profile";
+import { InvoiceGenerator } from "./pages/InvoiceGenerator";
 import { ThemeToggle } from "./components/ThemeToggle";
 
 import { LandingPage } from "./pages/LandingPage";
@@ -74,6 +75,7 @@ export default function App() {
                   />
                   <Route path="/dashboard/goals" element={<Goals />} />
                   <Route path="/dashboard/analytics" element={<Analytics />} />
+                  <Route path="/dashboard/invoice" element={<InvoiceGenerator />} />
                   <Route path="/dashboard/profile" element={<Profile />} />
                 </Route>
               </Route>

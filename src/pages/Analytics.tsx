@@ -19,12 +19,14 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  LineChart,
+  Line
 } from "recharts";
 
 export function Analytics() {
   const { transactions } = useData();
 
-  const { expensesByCategory, incomeVsExpense, history12Months } = useMemo(() => {
+  const { expensesByCategory, incomeVsExpense, history12Months, history6Months } = useMemo(() => {
     const categoryMap: Record<string, number> = {};
     let totalIncome = 0;
     let totalExpense = 0;
@@ -74,8 +76,9 @@ export function Analytics() {
     ];
 
     const history12Months = Array.from(historyMap.values());
+    const history6Months = history12Months.slice(-6);
 
-    return { expensesByCategory, incomeVsExpense, history12Months };
+    return { expensesByCategory, incomeVsExpense, history12Months, history6Months };
   }, [transactions]);
 
   const COLORS = [
@@ -199,6 +202,36 @@ export function Analytics() {
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-slate-500 dark:text-slate-400 dark:text-slate-500">
+                Data belum cukup
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl border-0 shadow-md overflow-hidden bg-white dark:bg-slate-900 md:col-span-2">
+          <CardHeader>
+            <CardTitle>Tren Pemasukan vs Pengeluaran (6 Bulan Terakhir)</CardTitle>
+          </CardHeader>
+          <CardContent className="h-80">
+            {transactions.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={history6Months}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" />
+                  <YAxis tickFormatter={(val) => `Rp${val / 1000}k`} />
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value)}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="income" name="Pemasukan" stroke="#10b981" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="expense" name="Pengeluaran" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-slate-500 dark:text-slate-400">
                 Data belum cukup
               </div>
             )}

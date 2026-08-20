@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -7,7 +7,7 @@ import { formatCurrency } from '../lib/utils';
 import { Plus, X, Edit2, Trash2, Target, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-const EXPENSE_CATEGORIES = [
+const expenseCategories = [
   "Makanan & Minuman",
   "Transportasi",
   "Belanja",
@@ -19,9 +19,11 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export function BudgetSection() {
-  const { budgets, transactions, addBudget, editBudget, deleteBudget } = useData();
+  const { budgets, transactions, addBudget, editBudget, deleteBudget, activeWorkspace } = useData();
+  const expenseCategories = activeWorkspace === 'business' ? ['Pembelian Stok/Bahan', 'Gaji Karyawan', 'Operasional', 'Pemasaran', 'Sewa Tempat', 'Pajak', 'Lainnya'] : ['Makanan & Minuman', 'Transportasi', 'Belanja', 'Tagihan & Utilitas', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
   const [showForm, setShowForm] = useState(false);
-  const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]);
+  const [category, setCategory] = useState('Makanan & Minuman');
+  useEffect(() => { setCategory(expenseCategories[0]); }, [activeWorkspace]);
   const [amount, setAmount] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -84,7 +86,7 @@ export function BudgetSection() {
     setShowForm(false);
     setEditingId(null);
     setAmount("");
-    setCategory(EXPENSE_CATEGORIES[0]);
+    setCategory(expenseCategories[0]);
   };
 
   return (
@@ -119,7 +121,7 @@ export function BudgetSection() {
                       onChange={(e) => setCategory(e.target.value)}
                       className="w-full h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#059669]"
                     >
-                      {EXPENSE_CATEGORIES.map(cat => (
+                      {expenseCategories.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
                     </select>

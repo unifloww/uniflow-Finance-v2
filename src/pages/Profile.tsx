@@ -5,20 +5,30 @@ import { useData } from "../contexts/DataContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { User, Phone, Mail, ShieldCheck, CheckCircle2, Crown, Star, ArrowRight, Check, DollarSign, Clock, Eye, EyeOff, Upload, X } from "lucide-react";
+import { User, Phone, Mail, ShieldCheck, CheckCircle2, Crown, Star, ArrowRight, Check, DollarSign, Clock, Eye, EyeOff, Upload, X, LogOut, Briefcase } from "lucide-react";
 import { motion } from "motion/react";
 import { isWebAuthnSupported } from "../lib/webauthn";
 import { Fingerprint } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export function Profile() {
-  const { userProfile, updateProfile, currentUser } = useAuth();
+  const { userProfile, updateProfile, currentUser, logout } = useAuth();
   const { displayCurrency, setDisplayCurrency } = useData();
   const navigate = useNavigate();
   const location = useLocation();
   
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error("Logout error", error);
+    }
+  };
+  
   const [name, setName] = useState(userProfile?.name || "");
   const [phone, setPhone] = useState(userProfile?.phone || "");
+  const [businessName, setBusinessName] = useState(userProfile?.businessName || "");
   const [isSaving, setIsSaving] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
@@ -212,7 +222,7 @@ export function Profile() {
     
     // Simulate network delay
     setTimeout(async () => {
-      await updateProfile({ name, phone });
+      await updateProfile({ name, phone, businessName });
       setIsSaving(false);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
@@ -380,6 +390,19 @@ export function Profile() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="Contoh: 081234567890"
+                    className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl py-6 px-4 text-base focus:border-[#059669]"
+                  />
+                </div>
+                
+                                <div className="space-y-3">
+                  <label className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-[#059669]" /> Nama Bisnis / Usaha
+                  </label>
+                  <Input
+                    type="text"
+                    value={businessName}
+                    onChange={(e) => setBusinessName(e.target.value)}
+                    placeholder="Contoh: Toko Kopi Uniflow"
                     className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl py-6 px-4 text-base focus:border-[#059669]"
                   />
                 </div>
@@ -617,6 +640,18 @@ export function Profile() {
             </Card>
           ))}
               </div>
+      </motion.div>
+
+      {/* Logout Mobile Only */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="lg:hidden mt-6">
+        <Button 
+          variant="outline" 
+          onClick={handleLogout}
+          className="w-full py-6 rounded-2xl text-rose-500 font-bold border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-500 hover:text-white transition-colors"
+        >
+          <LogOut className="w-5 h-5 mr-2" />
+          Keluar dari Akun
+        </Button>
       </motion.div>
 
       {paymentModalOpen && selectedPlan && typeof document !== "undefined" && createPortal(

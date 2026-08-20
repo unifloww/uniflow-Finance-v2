@@ -1,5 +1,5 @@
 import { AIAssistant } from "./AIAssistant";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -18,7 +18,9 @@ import {
   Menu,
   Lock,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Briefcase,
+  FileText,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { motion, AnimatePresence } from 'motion/react';
@@ -27,11 +29,57 @@ import { useData } from '../contexts/DataContext';
 
 export function UserLayout() {
   const { userProfile, logout, updateProfile } = useAuth();
-  const { syncStatus } = useData();
+  const { syncStatus, activeWorkspace, setActiveWorkspace } = useData();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const isDashboard = location.pathname === '/dashboard';
+  const themeColor = activeWorkspace === 'business' ? '#0891b2' : '#059669'; // cyan-600 vs emerald-600
+  const themeClasses = activeWorkspace === 'business' 
+    ? {
+        bg: 'bg-[#0891b2]',
+        border: 'border-[#06b6d4]',
+        gradient: 'from-[#0891b2] to-cyan-700',
+        activeNav: 'bg-cyan-700/50 dark:bg-cyan-800/50 shadow-inner',
+        navText: 'text-cyan-100/70',
+        textActive: 'text-cyan-600',
+        borderActive: 'border-cyan-600 dark:border-cyan-900',
+        ringActive: 'ring-cyan-500/50',
+        mobileNav: 'bg-cyan-600/95 dark:bg-cyan-900/95 shadow-[0_20px_40px_-15px_rgba(8,145,178,0.4)] dark:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.6)] border-cyan-500/50 dark:border-cyan-700/50',
+        fab: 'from-[#0891b2] to-cyan-400 hover:from-[#0e7490] hover:to-cyan-500 shadow-cyan-900/50',
+        sidebarBg: 'lg:from-[#0891b2] lg:to-[#0e7490]',
+        sidebarBorder: 'lg:border-cyan-600',
+        headerBorder: 'border-cyan-600/40'
+      }
+    : {
+        bg: 'bg-[#059669]',
+        border: 'border-[#10b981]',
+        gradient: 'from-[#059669] to-teal-700',
+        activeNav: 'bg-emerald-700/50 dark:bg-emerald-800/50 shadow-inner',
+        navText: 'text-emerald-100/70',
+        textActive: 'text-emerald-600',
+        borderActive: 'border-emerald-600 dark:border-emerald-900',
+        ringActive: 'ring-emerald-500/50',
+        mobileNav: 'bg-emerald-600/95 dark:bg-emerald-900/95 shadow-[0_20px_40px_-15px_rgba(5,150,105,0.4)] dark:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.6)] border-emerald-500/50 dark:border-emerald-700/50',
+        fab: 'from-[#059669] to-teal-400 hover:from-[#047857] hover:to-teal-500 shadow-emerald-900/50',
+        sidebarBg: 'lg:from-[#059669] lg:to-[#046a4e]',
+        sidebarBorder: 'lg:border-emerald-600',
+        headerBorder: 'border-emerald-600/40'
+      };
+
+  const [isSwitchingWorkspace, setIsSwitchingWorkspace] = useState(false);
+  const [workspaceName, setWorkspaceName] = useState(activeWorkspace === 'business' ? 'Bisnis' : 'Personal');
+  const prevWorkspace = useRef(activeWorkspace);
+
+  useEffect(() => {
+    if (prevWorkspace.current !== activeWorkspace) {
+      setWorkspaceName(activeWorkspace === 'business' ? 'Bisnis' : 'Personal');
+      setIsSwitchingWorkspace(true);
+      const timer = setTimeout(() => setIsSwitchingWorkspace(false), 2000); // 2 seconds animation
+      prevWorkspace.current = activeWorkspace;
+      return () => clearTimeout(timer);
+    }
+  }, [activeWorkspace]);
 
   const isTrialExpired = useMemo(() => {
     if (userProfile?.role === 'superadmin') return false;
@@ -75,7 +123,7 @@ export function UserLayout() {
     { name: 'Dashboard', path: '/dashboard', icon: Home },
     { name: 'Transaksi', path: '/dashboard/transactions', icon: ArrowRightLeft },
     { name: 'Akun', path: '/dashboard/accounts', icon: Wallet },
-    { name: 'Impian', path: '/dashboard/goals', icon: Target },
+    { name: activeWorkspace === 'business' ? 'Target Usaha' : 'Impian', path: '/dashboard/goals', icon: Target },
     { name: 'Analitik', path: '/dashboard/analytics', icon: PieChart },
     { name: 'Profil', path: '/dashboard/profile', icon: User },
   ];
@@ -98,7 +146,7 @@ export function UserLayout() {
       );
     }
     return (
-      <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-100 lg:bg-[#059669]/10 lg:text-[#059669] lg:dark:text-emerald-400 border border-emerald-500/30 lg:border-[#059669]/20 text-[10px] font-bold tracking-wide uppercase`}>
+      <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-100 lg:bg-emerald-500/10 lg:text-emerald-600 lg:dark:text-emerald-400 border border-emerald-500/30 lg:border-emerald-500/20 text-[10px] font-bold tracking-wide uppercase`}>
         <CheckCircle2 className="h-3 w-3" />
         <span className={isMobile ? "hidden" : "hidden sm:inline"}>Tersinkronisasi</span>
       </div>
@@ -108,15 +156,15 @@ export function UserLayout() {
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 pb-16 lg:pb-0">
       {/* Sidebar for Desktop */}
-      <aside className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:border-[#10b981] lg:bg-gradient-to-b lg:from-[#059669] lg:to-[#046a4e] transition-all duration-300 z-30 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}`}>
-        <div className={`flex h-32 items-center justify-center border-b border-[#10b981] ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
+      <aside className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:border-r ${themeClasses.sidebarBorder} lg:bg-gradient-to-b ${themeClasses.sidebarBg} transition-all duration-300 z-30 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}`}>
+        <div className={`flex h-32 items-center justify-center border-b ${themeClasses.border} ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
           <img src="https://firebasestorage.googleapis.com/v0/b/uniflow/o/Uniflow%20White.png?alt=media&token=ed8e2972-f297-4861-9920-c8145506122d" alt="UniFlow" className={`w-auto object-contain drop-shadow-xl hover:scale-105 transition-all cursor-pointer ${isSidebarCollapsed ? 'h-10 sm:h-12' : 'h-24 sm:h-28'}`} />
           
         </div>
         
         <div className="flex h-[calc(100vh-8rem)] flex-col justify-between p-4">
           <nav className="space-y-2 relative">
-            {navItems.map((item) => {
+            {[...navItems.slice(0, 5), ...(activeWorkspace === 'business' ? [{ name: 'Invoice', path: '/dashboard/invoice', icon: FileText }] : []), navItems[5]].map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
               return (
@@ -145,7 +193,7 @@ export function UserLayout() {
             })}
           </nav>
           
-          <div className="border-t border-[#10b981] pt-4">
+          <div className={`border-t ${themeClasses.border} pt-4`}>
             {!isSidebarCollapsed && (
               <div className="mb-4 px-4 overflow-hidden">
                 <p className="text-sm font-bold text-white truncate">{userProfile?.name}</p>
@@ -181,22 +229,27 @@ export function UserLayout() {
 
       {/* Main Content */}
       <main className={`relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden pt-20 lg:pt-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
-        {isDashboard && <div className="hidden lg:block absolute top-0 left-0 right-0 bg-[#059669] h-[340px] z-0 shadow-sm pointer-events-none" />}
+        {isDashboard && <div className={`hidden lg:block absolute top-0 left-0 right-0 ${themeClasses.bg} h-[340px] z-0 shadow-sm pointer-events-none`} />}
         <div className="relative z-10 flex flex-col flex-1 h-full">
         {/* Mobile Header */}
-        <header className="fixed top-0 inset-x-0 z-50 flex h-20 items-center justify-between border-b border-emerald-600/40 bg-gradient-to-r from-[#059669] to-teal-700 px-4 py-2 lg:hidden shadow-md">
+        
+        <header className={`fixed top-0 inset-x-0 z-50 flex h-20 items-center justify-between border-b ${themeClasses.headerBorder} bg-gradient-to-r ${themeClasses.gradient} px-4 py-2 lg:hidden shadow-md`}>
           <div className="flex items-center">
             <img src="https://firebasestorage.googleapis.com/v0/b/uniflow/o/Uniflow%20White.png?alt=media&token=ed8e2972-f297-4861-9920-c8145506122d" alt="UniFlow" className="h-16 w-auto max-w-[200px] object-contain drop-shadow-md scale-125 origin-left ml-2" />
           </div>
           <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setActiveWorkspace(activeWorkspace === 'personal' ? 'business' : 'personal')}
+              className="flex items-center justify-center h-9 w-9 rounded-full bg-black/20 hover:bg-black/30 transition-colors text-white"
+            >
+              {activeWorkspace === 'personal' ? <User className="w-4 h-4" /> : <Briefcase className="w-4 h-4" />}
+            </button>
+
             {renderSyncIndicator(true)}
             <ThemeToggle />
             <Link to="/dashboard/profile" className="flex items-center justify-center h-9 w-9 rounded-full bg-white/20 hover:bg-white/30 transition-colors border border-white/30 text-white text-xs font-bold shadow-sm">
               {userProfile?.name?.charAt(0).toUpperCase() || "U"}
             </Link>
-            <button onClick={(e) => { e.preventDefault(); handleLogout(); }} className="text-white bg-rose-500 hover:bg-rose-600 p-2 rounded-full shadow-md transition-colors z-50 relative cursor-pointer">
-              <LogOut className="h-4 w-4" />
-            </button>
           </div>
         </header>
 
@@ -204,14 +257,14 @@ export function UserLayout() {
         <header className="hidden lg:flex sticky top-0 z-20 h-16 items-center justify-between bg-transparent px-8 mt-2">
            <button 
              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-             className="text-white hover:bg-white/10 p-2 rounded-full transition-colors flex items-center justify-center bg-[#059669] shadow-sm border border-[#10b981]"
+             className={`text-white hover:bg-white/10 p-2 rounded-full transition-colors flex items-center justify-center ${themeClasses.bg} shadow-sm border ${themeClasses.border}`}
            >
              <Menu className="h-5 w-5" />
            </button>
            <div className="flex items-center gap-3">
            {renderSyncIndicator(false)}
            <ThemeToggle />
-           <Link to="/dashboard/profile" className="text-sm font-bold text-white bg-[#059669] px-4 py-2 rounded-full shadow-sm border border-[#10b981] hover:bg-white dark:bg-slate-900 hover:text-[#059669] transition-colors flex items-center gap-2">
+           <Link to="/dashboard/profile" className={`text-sm font-bold text-white ${themeClasses.bg} px-4 py-2 rounded-full shadow-sm border ${themeClasses.border} hover:bg-white dark:bg-slate-900 hover:text-[#059669] transition-colors flex items-center gap-2`}>
               <div className="h-6 w-6 rounded-full bg-white dark:bg-slate-900 text-[#059669] flex items-center justify-center text-xs font-bold">
                 {userProfile?.name?.charAt(0).toUpperCase() || "U"}
               </div>
@@ -240,7 +293,7 @@ export function UserLayout() {
 
                         {/* Mobile Bottom Navigation */}
       <div className="fixed bottom-6 left-4 right-4 z-50 lg:hidden">
-        <nav className="flex h-[72px] items-center justify-between bg-emerald-600/95 dark:bg-emerald-900/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(5,150,105,0.4)] dark:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.6)] border border-emerald-500/50 dark:border-emerald-700/50 px-5">
+        <nav className={`flex h-[72px] items-center justify-between backdrop-blur-xl rounded-[2.5rem] border px-5 ${themeClasses.mobileNav}`}>
           {[navItems[0], navItems[2]].map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
@@ -250,10 +303,10 @@ export function UserLayout() {
                 to={item.path}
                 className="flex flex-col items-center justify-center w-[4rem] h-full gap-1 transition-all"
               >
-                <div className={`flex items-center justify-center p-1.5 rounded-full transition-all duration-300 ${isActive ? 'bg-emerald-700/50 dark:bg-emerald-800/50 shadow-inner' : ''}`}>
-                  <Icon className={`h-[22px] w-[22px] ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-100/70'}`} strokeWidth={isActive ? 2.5 : 2} />
+                <div className={`flex items-center justify-center p-1.5 rounded-full transition-all duration-300 ${isActive ? themeClasses.activeNav : ''}`}>
+                  <Icon className={`h-[22px] w-[22px] ${isActive ? 'text-white drop-shadow-md' : themeClasses.navText}`} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
-                <span className={`text-[9px] font-semibold transition-all duration-300 ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-100/70'}`}>
+                <span className={`text-[9px] font-semibold transition-all duration-300 ${isActive ? 'text-white drop-shadow-md' : themeClasses.navText}`}>
                   {item.name === 'Dashboard' ? 'Home' : item.name}
                 </span>
               </Link>
@@ -265,7 +318,7 @@ export function UserLayout() {
             onClick={() => navigate('/dashboard/transactions', { state: { openAdd: true } })}
             className="flex flex-col items-center justify-center -mt-10 relative z-50 transition-transform active:scale-90"
           >
-            <div className="h-16 w-16 rounded-full bg-white dark:bg-slate-800 shadow-[0_12px_24px_-8px_rgba(0,0,0,0.3)] flex items-center justify-center text-emerald-600 border-[5px] border-emerald-600 dark:border-emerald-900 ring-1 ring-emerald-500/50">
+            <div className={`h-16 w-16 rounded-full bg-white dark:bg-slate-800 shadow-[0_12px_24px_-8px_rgba(0,0,0,0.3)] flex items-center justify-center ${themeClasses.textActive} border-[5px] ${themeClasses.borderActive} ring-1 ${themeClasses.ringActive}`}>
               <Plus className="h-7 w-7" strokeWidth={3} />
             </div>
           </button>
@@ -279,10 +332,10 @@ export function UserLayout() {
                 to={item.path}
                 className="flex flex-col items-center justify-center w-[4rem] h-full gap-1 transition-all"
               >
-                <div className={`flex items-center justify-center p-1.5 rounded-full transition-all duration-300 ${isActive ? 'bg-emerald-700/50 dark:bg-emerald-800/50 shadow-inner' : ''}`}>
-                  <Icon className={`h-[22px] w-[22px] ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-100/70'}`} strokeWidth={isActive ? 2.5 : 2} />
+                <div className={`flex items-center justify-center p-1.5 rounded-full transition-all duration-300 ${isActive ? themeClasses.activeNav : ''}`}>
+                  <Icon className={`h-[22px] w-[22px] ${isActive ? 'text-white drop-shadow-md' : themeClasses.navText}`} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
-                <span className={`text-[9px] font-semibold transition-all duration-300 ${isActive ? 'text-white drop-shadow-md' : 'text-emerald-100/70'}`}>
+                <span className={`text-[9px] font-semibold transition-all duration-300 ${isActive ? 'text-white drop-shadow-md' : themeClasses.navText}`}>
                   {item.name}
                 </span>
               </Link>
@@ -297,7 +350,7 @@ export function UserLayout() {
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.92 }}
         onClick={() => navigate('/dashboard/transactions', { state: { openAdd: true } })}
-        className="fixed hidden lg:flex bottom-8 right-8 h-14 w-14 bg-gradient-to-tr from-[#059669] to-teal-400 hover:from-[#047857] hover:to-teal-500 text-white rounded-full shadow-2xl shadow-emerald-900/50 items-center justify-center z-50 transition-all border-2 border-white dark:border-slate-800 cursor-pointer"
+        className={`fixed hidden lg:flex bottom-8 right-8 h-14 w-14 bg-gradient-to-tr text-white rounded-full shadow-2xl items-center justify-center z-50 transition-all border-2 border-white dark:border-slate-800 cursor-pointer ${themeClasses.fab}`}
       >
         <Plus className="h-6 w-6 font-bold" />
       </motion.button>
@@ -318,7 +371,7 @@ export function UserLayout() {
               Masa trial 3 hari Anda telah berakhir. Untuk terus menikmati semua fitur cerdas dari Uniflow, silakan upgrade ke akun PRO.
             </p>
             <div className="space-y-3">
-              <Button onClick={handleUpgrade} className="w-full bg-[#059669] hover:bg-[#047857] text-white py-6 rounded-xl text-base font-bold shadow-lg shadow-emerald-900/20">
+              <Button onClick={handleUpgrade} className={`w-full ${themeClasses.bg} hover:bg-[#047857] text-white py-6 rounded-xl text-base font-bold shadow-lg shadow-emerald-900/20`}>
                 Upgrade ke PRO Sekarang
               </Button>
               <Button onClick={handleLogout} variant="outline" className="w-full py-6 rounded-xl text-slate-500 font-bold border-slate-200 dark:border-slate-800">
@@ -328,6 +381,45 @@ export function UserLayout() {
           </motion.div>
         </div>
       )}
+
+      {/* Workspace Switch Animation */}
+      <AnimatePresence>
+        {isSwitchingWorkspace && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { delay: 0.5 } }}
+            className={`fixed inset-0 z-[999] flex flex-col items-center justify-center ${activeWorkspace === 'business' ? 'bg-[#0891b2]' : 'bg-[#059669]'} text-white overflow-hidden`}
+          >
+            {/* Background elements */}
+            <motion.div 
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: [1, 2, 3], opacity: [0, 0.2, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="absolute w-96 h-96 bg-white rounded-full blur-3xl pointer-events-none"
+            />
+            
+            <motion.div
+               initial={{ scale: 0.8, opacity: 0, y: 20 }}
+               animate={{ scale: 1, opacity: 1, y: 0 }}
+               exit={{ scale: 1.1, opacity: 0 }}
+               transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+               className="flex flex-col items-center relative z-10"
+            >
+               <img src="https://firebasestorage.googleapis.com/v0/b/uniflow/o/Uniflow%20White.png?alt=media&token=ed8e2972-f297-4861-9920-c8145506122d" alt="UniFlow Logo" className="h-10 sm:h-12 w-auto object-contain mb-8 drop-shadow-xl" />
+               <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center mb-6 shadow-2xl border border-white/30">
+                 {activeWorkspace === 'business' ? <Briefcase className="w-12 h-12 text-white" /> : <User className="w-12 h-12 text-white" />}
+               </div>
+               <h2 className="text-3xl font-black mb-3 text-center tracking-tight drop-shadow-md">
+                 Beralih ke <br/> {workspaceName}
+               </h2>
+               <p className="text-white/90 font-medium flex items-center gap-2">
+                 <RefreshCw className="w-4 h-4 animate-spin" /> Menyiapkan workspace Anda...
+               </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

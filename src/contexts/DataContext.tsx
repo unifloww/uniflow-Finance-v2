@@ -11,6 +11,7 @@ export interface Account {
   color?: string;
   balance: number;
   user_id?: string;
+  workspace?: 'personal' | 'business';
 }
 
 export interface Transaction {
@@ -22,6 +23,7 @@ export interface Transaction {
   description: string;
   date: string;
   user_id?: string;
+  workspace?: 'personal' | 'business';
 }
 
 export interface Goal {
@@ -31,6 +33,7 @@ export interface Goal {
   current: number;
   deadline: string;
   user_id?: string;
+  workspace?: 'personal' | 'business';
 }
 
 export interface Budget {
@@ -39,6 +42,7 @@ export interface Budget {
   amount: number;
   period: string;
   user_id?: string;
+  workspace?: 'personal' | 'business';
 }
 
 interface DataContextType {
@@ -64,6 +68,8 @@ interface DataContextType {
   toggleHideBalances: () => void;
   displayCurrency: 'IDR' | 'USD';
   setDisplayCurrency: (currency: 'IDR' | 'USD') => void;
+  activeWorkspace: 'personal' | 'business';
+  setActiveWorkspace: (w: 'personal' | 'business') => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -71,10 +77,19 @@ const DataContext = createContext<DataContextType | undefined>(undefined);
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
   
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [activeWorkspace, setActiveWorkspaceState] = useState<'personal' | 'business'>(() => {
+    return (localStorage.getItem('uniflow_workspace') as 'personal' | 'business') || 'personal';
+  });
+
+  const setActiveWorkspace = (workspace: 'personal' | 'business') => {
+    localStorage.setItem('uniflow_workspace', workspace);
+    setActiveWorkspaceState(workspace);
+  };
+
+  const [rawAccounts, setRawAccounts] = useState<Account[]>([]);
+  const [rawTransactions, setRawTransactions] = useState<Transaction[]>([]);
+  const [rawGoals, setRawGoals] = useState<Goal[]>([]);
+  const [rawBudgets, setRawBudgets] = useState<Budget[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>(
     navigator.onLine ? 'synced' : 'offline'
@@ -100,6 +115,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
+  const accounts = React.useMemo(() => rawAccounts.filter(a => activeWorkspace === 'personal' ? (!a.workspace || a.workspace === 'personal') : a.workspace === 'business'), [rawAccounts, activeWorkspace]);
+  const transactions = React.useMemo(() => rawTransactions.filter(t => activeWorkspace === 'personal' ? (!t.workspace || t.workspace === 'personal') : t.workspace === 'business'), [rawTransactions, activeWorkspace]);
+  const goals = React.useMemo(() => rawGoals.filter(g => activeWorkspace === 'personal' ? (!g.workspace || g.workspace === 'personal') : g.workspace === 'business'), [rawGoals, activeWorkspace]);
+  const budgets = React.useMemo(() => rawBudgets.filter(b => activeWorkspace === 'personal' ? (!b.workspace || b.workspace === 'personal') : b.workspace === 'business'), [rawBudgets, activeWorkspace]);
+
   useEffect(() => {
     const handleOnline = () => setSyncStatus('synced');
     const handleOffline = () => setSyncStatus('offline');
@@ -113,10 +133,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!currentUser) {
-      setAccounts([]);
-      setTransactions([]);
-      setGoals([]);
-      setBudgets([]);
+      setRawAccounts([]);
+      setRawTransactions([]);
+      setRawGoals([]);
+      setRawBudgets([]);
       setIsLoaded(true);
       return;
     }
@@ -125,19 +145,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setSyncStatus('syncing');
 
     const unsubscribeAccounts = onSnapshot(query(collection(db, 'accounts'), where('user_id', '==', currentUser.uid)), (snapshot) => {
-      setAccounts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account)));
+      setRawAccounts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account)));
     });
 
     const unsubscribeTransactions = onSnapshot(query(collection(db, 'transactions'), where('user_id', '==', currentUser.uid)), (snapshot) => {
-      setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setRawTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     });
 
     const unsubscribeGoals = onSnapshot(query(collection(db, 'goals'), where('user_id', '==', currentUser.uid)), (snapshot) => {
-      setGoals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Goal)));
+      setRawGoals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Goal)));
     });
     
     const unsubscribeBudgets = onSnapshot(query(collection(db, 'budgets'), where('user_id', '==', currentUser.uid)), (snapshot) => {
-      setBudgets(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Budget)));
+      setRawBudgets(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Budget)));
     });
 
     setTimeout(() => {
@@ -170,7 +190,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser) return;
     setSyncStatus('syncing');
     const newRef = doc(collection(db, 'accounts'));
-    await setDoc(newRef, { ...account, user_id: currentUser.uid });
+    await setDoc(newRef, { ...account, user_id: currentUser.uid, workspace: activeWorkspace });
     setSyncStatus('synced');
   };
 
@@ -211,7 +231,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     
     // Create transaction
     const newTxRef = doc(collection(db, 'transactions'));
-    batch.set(newTxRef, { ...tx, user_id: currentUser.uid });
+    batch.set(newTxRef, { ...tx, user_id: currentUser.uid, workspace: activeWorkspace });
     
     // Update account balance
     const acc = accounts.find(a => a.id === tx.accountId);
@@ -255,7 +275,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser) return;
     setSyncStatus('syncing');
     const newRef = doc(collection(db, 'goals'));
-    await setDoc(newRef, { ...goal, user_id: currentUser.uid });
+    await setDoc(newRef, { ...goal, user_id: currentUser.uid, workspace: activeWorkspace });
     setSyncStatus('synced');
   };
 
@@ -277,7 +297,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser) return;
     setSyncStatus('syncing');
     const newRef = doc(collection(db, 'budgets'));
-    await setDoc(newRef, { ...budget, user_id: currentUser.uid });
+    await setDoc(newRef, { ...budget, user_id: currentUser.uid, workspace: activeWorkspace });
     setSyncStatus('synced');
   };
 
@@ -317,7 +337,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       hideBalances,
       toggleHideBalances,
       displayCurrency,
-      setDisplayCurrency
+      setDisplayCurrency,
+      activeWorkspace,
+      setActiveWorkspace
     }}>
       {children}
     </DataContext.Provider>

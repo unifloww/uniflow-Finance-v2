@@ -12,6 +12,7 @@ export interface UserProfile {
   email: string;
   name: string;
   phone?: string;
+  businessName?: string;
   role: 'user' | 'superadmin';
   status: 'active' | 'suspended' | 'pending';
   plan?: 'trial' | 'pro' | 'lifetime';
