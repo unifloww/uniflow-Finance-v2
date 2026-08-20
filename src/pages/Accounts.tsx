@@ -158,8 +158,9 @@ export function Accounts() {
           </Card>
         </motion.div>
 
+        {createPortal(
         <AnimatePresence>
-          {showAddForm && createPortal(
+          {showAddForm && (
           <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
@@ -327,10 +328,11 @@ export function Accounts() {
                 
               </div>
             </motion.div>
-          </motion.div>,
-          document.body
+          </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
         )}
-        </AnimatePresence>
 
         {accounts.map((acc, i) => {
           const providerInfo = PROVIDERS.find(p => p.id === acc.provider);
@@ -359,7 +361,7 @@ export function Accounts() {
                     </div>
                   </div>
                 )}
-                <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <div className="absolute top-4 right-4 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
                   <Button 
                     variant="ghost" 
                     size="icon" 
