@@ -1,3 +1,4 @@
+import { AIAssistant } from "./AIAssistant";
 import React, { useState, useMemo } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -290,6 +291,7 @@ export function UserLayout() {
         </nav>
       </div>
 
+      <AIAssistant />
       {/* Floating Action Button (FAB) - ONLY DESKTOP */}
       <motion.button
         whileHover={{ scale: 1.08 }}

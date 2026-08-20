@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import { useData, Account } from "../contexts/DataContext";
 import {
   Card,
@@ -59,6 +60,7 @@ export function Accounts() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const resetForm = () => {
+    setEditingId(null);
     setName("");
     setType("bank");
     setProvider("other");
@@ -157,15 +159,35 @@ export function Accounts() {
         </motion.div>
 
         <AnimatePresence>
-          {showAddForm && (
-            <motion.div initial={{ opacity: 0, height: 0, scale: 0.95 }} animate={{ opacity: 1, height: "auto", scale: 1 }} exit={{ opacity: 0, height: 0, scale: 0.95 }} className="md:col-span-4 origin-top">
-              <Card className="rounded-[2rem] border-0 shadow-xl bg-white dark:bg-slate-900 overflow-hidden mb-2">
-                <CardHeader className="bg-slate-50 dark:bg-slate-800/50/50 border-b border-slate-50">
-                  <CardTitle className="text-lg text-slate-800 dark:text-slate-200">{editingId ? "Edit Akun" : "Tambah Akun Baru"}</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-6">
+          {showAddForm && createPortal(
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.95, opacity: 0 }} 
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[2rem] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+                  {editingId ? "Edit Akun" : "Tambah Akun Baru"}
+                </h2>
+                <button 
+                  onClick={() => resetForm()}
+                  className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto">
+                
                   <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Penyedia Layanan (Bank/E-Wallet)</label>
                         <select
@@ -302,10 +324,12 @@ export function Accounts() {
                       </Button>
                     </div>
                   </form>
-                </CardContent>
-              </Card>
+                
+              </div>
             </motion.div>
-          )}
+          </motion.div>,
+          document.body
+        )}
         </AnimatePresence>
 
         {accounts.map((acc, i) => {

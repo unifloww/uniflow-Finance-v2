@@ -11,6 +11,8 @@ import {
 } from "../components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
 import { motion } from "motion/react";
+import { isWebAuthnSupported, registerBiometric, loginBiometric } from "../lib/webauthn";
+import { Fingerprint } from "lucide-react";
 
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { setDoc } from "firebase/firestore";
@@ -22,6 +24,9 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [useBiometric, setUseBiometric] = useState(false);
+  const savedBiometricEmail = localStorage.getItem("saved_biometric_email");
+  const savedBiometricPass = localStorage.getItem("saved_biometric_pass");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -68,6 +73,25 @@ export function Login() {
     } catch (err: any) {
       console.error(err);
       setError("Gagal login dengan Google: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      await loginBiometric();
+      const email = localStorage.getItem("saved_biometric_email");
+      const pass = atob(localStorage.getItem("saved_biometric_pass") || "");
+      if (email && pass) {
+        await signInWithEmailAndPassword(auth, email, pass);
+        navigate("/dashboard");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError("Autentikasi biometrik gagal atau dibatalkan.");
     } finally {
       setLoading(false);
     }
@@ -211,6 +235,22 @@ export function Login() {
                   </button>
                 </div>
               </div>
+
+              {isWebAuthnSupported() && !savedBiometricPass && (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="useBiometric"
+                    checked={useBiometric}
+                    onChange={(e) => setUseBiometric(e.target.checked)}
+                    className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <label htmlFor="useBiometric" className="text-sm text-slate-600 dark:text-slate-400">
+                    Gunakan Sidik Jari/FaceID untuk login berikutnya
+                  </label>
+                </div>
+              )}
+
               <Button
                 type="submit"
                 className="w-full bg-[#059669] hover:bg-[#047857] text-white shadow-lg shadow-emerald-900/20 rounded-xl py-6 text-base font-semibold transition-all hover:shadow-xl hover:-translate-y-0.5"
@@ -218,6 +258,19 @@ export function Login() {
               >
                 {loading ? "Memproses..." : "Masuk ke Dashboard"}
               </Button>
+
+              {savedBiometricPass && (
+                <Button
+                  type="button"
+                  onClick={handleBiometricLogin}
+                  className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-emerald-900/50 dark:hover:bg-emerald-900/80 text-white shadow-lg rounded-xl py-6 text-base font-semibold transition-all hover:-translate-y-0.5 mt-4"
+                  disabled={loading}
+                >
+                  <Fingerprint className="w-6 h-6 mr-2" />
+                  {loading ? "Memverifikasi..." : "Login dengan Biometrik"}
+                </Button>
+              )}
+
             
               <div className="relative my-4">
                 <div className="absolute inset-0 flex items-center">

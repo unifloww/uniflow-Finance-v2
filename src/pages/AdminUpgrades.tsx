@@ -68,9 +68,21 @@ export function AdminUpgrades() {
       // If approved, update user profile
       if (action === 'approved') {
         const userRef = doc(db, "users", userId);
+        const now = new Date();
+        let planEnd = null;
+        let planType = 'pro';
+        if (planName.toLowerCase().includes('selamanya')) {
+          planType = 'lifetime';
+        } else if (planName.includes('1 Bulan')) {
+          planEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        } else if (planName.includes('1 Tahun')) {
+          planEnd = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
+        }
+        
         await updateDoc(userRef, {
-          plan: 'pro',
-          planName: planName
+          plan: planType,
+          planName: planName,
+          ...(planEnd && { planEnd })
         });
       }
       

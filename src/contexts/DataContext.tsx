@@ -47,6 +47,7 @@ interface DataContextType {
   goals: Goal[];
   budgets: Budget[];
   addAccount: (account: Omit<Account, 'id'>) => Promise<void>;
+  updateAccount: (id: string, account: Partial<Account>) => Promise<void>;
   editAccount: (id: string, data: Partial<Account>) => Promise<void>;
   deleteAccount: (id: string) => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
@@ -152,6 +153,19 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     };
   }, [currentUser]);
 
+  const updateAccount = async (id: string, account: Partial<Account>) => {
+    if (!currentUser) return;
+    try {
+      setSyncStatus('syncing');
+      const ref = doc(db, 'accounts', id);
+      await setDoc(ref, { ...account, user_id: currentUser.uid, updatedAt: new Date().toISOString() }, { merge: true });
+      setSyncStatus('synced');
+    } catch (error) {
+      console.error('Error updating account', error);
+      setSyncStatus('offline');
+    }
+  };
+
   const addAccount = async (account: Omit<Account, 'id'>) => {
     if (!currentUser) return;
     setSyncStatus('syncing');
@@ -172,6 +186,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     setSyncStatus('syncing');
     await deleteDoc(doc(db, 'accounts', id));
     setSyncStatus('synced');
+  };
+
+  const updateTransaction = async (id: string, tx: Partial<Transaction>) => {
+    if (!currentUser) return;
+    try {
+      setSyncStatus('syncing');
+      
+      const ref = doc(db, 'transactions', id);
+      await setDoc(ref, { ...tx, user_id: currentUser.uid }, { merge: true });
+      
+      setSyncStatus('synced');
+    } catch (error) {
+      console.error('Error updating tx', error);
+      setSyncStatus('offline');
+    }
   };
 
   const addTransaction = async (tx: Omit<Transaction, 'id'>) => {
@@ -272,10 +301,10 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       transactions, 
       goals,
       budgets,
-      addAccount, 
+      addAccount, updateAccount, 
       editAccount,
       deleteAccount,
-      addTransaction, 
+      addTransaction, updateTransaction, 
       deleteTransaction, 
       addGoal, 
       editGoal, 

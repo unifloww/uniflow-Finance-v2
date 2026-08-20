@@ -212,9 +212,15 @@ export function Dashboard() {
             </h3>
           </div>
 
-          <span className="relative z-10 text-xs sm:text-sm font-black tracking-wider text-white uppercase drop-shadow-sm bg-white/20 px-3 py-1 rounded-full border border-white/30 backdrop-blur-sm">
-            {userProfile?.plan === 'pro' ? 'PRO' : (accounts[0]?.type?.toUpperCase() || 'CASH')}
-          </span>
+          {userProfile?.plan === 'pro' ? (
+            <span className="relative z-10 text-xs sm:text-sm font-black tracking-wider text-white uppercase drop-shadow-sm bg-white/20 px-3 py-1 rounded-full border border-white/30 backdrop-blur-sm">
+              PRO
+            </span>
+          ) : (
+            <Link to="/dashboard/profile#pricing" className="relative z-10 text-[10px] sm:text-xs font-black tracking-wider text-emerald-900 uppercase drop-shadow-sm bg-yellow-400 hover:bg-yellow-300 px-3 py-1.5 rounded-full border border-yellow-300 shadow-lg shadow-yellow-500/20 transition-all active:scale-95 flex items-center gap-1">
+              <Zap className="w-3 h-3" /> Upgrade
+            </Link>
+          )}
         </div>
 
         {/* Front Pocket Flap */}

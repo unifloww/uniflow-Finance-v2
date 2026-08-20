@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useMemo, useEffect } from "react";
 import { useData } from "../contexts/DataContext";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -20,7 +21,9 @@ import {
   X,
   Search,
   Wallet,
-  FileText
+  FileText,
+  Camera,
+  Loader2
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -54,11 +57,17 @@ export function Transactions() {
   const [amount, setAmount] = useState("");
   const [type, setType] = useState<"income" | "expense">("expense");
   const [description, setDescription] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [category, setCategory] = useState("Makanan & Minuman");
   const [accountId, setAccountId] = useState(
     accounts.length > 0 ? accounts[0].id : "",
   );
-  const [filterPeriod, setFilterPeriod] = useState<"all" | "daily" | "weekly" | "monthly">("all");
+  const [filterPeriod, setFilterPeriod] = useState<"all" | "daily" | "weekly" | "monthly" | "custom">("all");
+  const [customDateRange, setCustomDateRange] = useState({ start: "", end: "" });
+  const [showDatePickerModal, setShowDatePickerModal] = useState(false);
+  
+  const [isScanning, setIsScanning] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -70,6 +79,57 @@ export function Transactions() {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.state, navigate, location.pathname]);
+
+  const handleScanReceipt = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      setIsScanning(true);
+      try {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = async () => {
+          const base64 = reader.result;
+          
+          const res = await fetch('/api/ai/receipt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: base64 })
+          });
+          
+          if (!res.ok) throw new Error("Gagal membaca struk");
+          
+          const data = await res.json();
+          let jsonString = data.result;
+          if (jsonString.startsWith('```')) {
+            jsonString = jsonString.replace(/^\s*```[a-z]*\n/i, '').replace(/\n```\s*$/i, '');
+          }
+          
+          try {
+            const parsed = JSON.parse(jsonString);
+            if (parsed.amount) setAmount(parsed.amount.toString());
+            if (parsed.date) setDate(parsed.date);
+            if (parsed.description) setDescription(parsed.description);
+            setType('expense');
+          } catch (e) {
+            console.error("Failed to parse JSON:", jsonString);
+            alert("Gagal membaca format JSON dari AI.");
+          }
+        };
+      } catch (err) {
+        console.error("Scan error:", err);
+        alert("Gagal membaca struk secara otomatis.");
+      } finally {
+        setIsScanning(false);
+      }
+    };
+    input.click();
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,7 +160,7 @@ export function Transactions() {
 
     return transactions.filter(tx => {
       // Text search
-      if (searchQuery && !tx.description.toLowerCase().includes(lowerQuery)) {
+      if (searchQuery && !tx.description.toLowerCase().includes(lowerQuery) && !tx.category.toLowerCase().includes(lowerQuery)) {
         return false;
       }
 
@@ -116,9 +176,13 @@ export function Transactions() {
       if (filterPeriod === "monthly") {
         return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
       }
+      if (filterPeriod === "custom" && customDateRange.start && customDateRange.end) {
+        const txDateStr = txDate.toISOString().split("T")[0];
+        return txDateStr >= customDateRange.start && txDateStr <= customDateRange.end;
+      }
       return true;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, filterPeriod, searchQuery]);
+  }, [transactions, filterPeriod, searchQuery, customDateRange]);
 
   const totals = useMemo(() => {
     let income = 0;
@@ -274,35 +338,56 @@ export function Transactions() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500" />
           <Input
             type="text"
-            placeholder="Cari transaksi berdasarkan catatan..."
+            placeholder="Cari catatan atau kategori..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-full h-11 w-full shadow-sm focus-visible:ring-2 focus-visible:ring-[#059669]"
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide md:pb-0 items-center">
-          {["all", "daily", "weekly", "monthly"].map((period) => {
+        <div className="flex flex-wrap gap-2 pb-2 md:pb-0 items-center">
+          {["all", "daily", "weekly", "monthly", "custom"].map((period) => {
             const labels: Record<string, string> = {
               all: "Semua",
               daily: "Hari Ini",
               weekly: "7 Hari",
-              monthly: "Bulan Ini"
+              monthly: "Bulan Ini",
+              custom: (customDateRange.start && customDateRange.end && filterPeriod === "custom") ? `${new Date(customDateRange.start).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })} - ${new Date(customDateRange.end).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })}` : "Pilih Tanggal 📅"
             };
             const isSelected = filterPeriod === period;
+            
+            // Hide "monthly" (Bulan Ini) on mobile
+            const displayClass = period === "monthly" ? "hidden sm:inline-flex" : "inline-flex";
+
             return (
-              <Button 
-                key={period}
-                variant="outline"
-                onClick={() => setFilterPeriod(period as any)}
-                className={`rounded-full px-5 h-10 shrink-0 transition-all ${
-                  isSelected 
-                    ? "bg-gradient-to-r from-[#059669] to-teal-600 text-white border-0 shadow-md shadow-emerald-500/20 font-bold" 
-                    : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold shadow-sm"
-                }`}
-                size="sm"
-              >
-                {labels[period]}
-              </Button>
+              <div key={period} className={`relative shrink-0 ${displayClass}`}>
+                {period === "custom" ? (
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowDatePickerModal(true)}
+                    className={`relative rounded-full px-5 h-10 w-full transition-all ${
+                      isSelected 
+                        ? "bg-gradient-to-r from-[#059669] to-teal-600 text-white border-0 shadow-md shadow-emerald-500/20 font-bold" 
+                        : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold shadow-sm"
+                    }`}
+                    size="sm"
+                  >
+                    {labels[period]}
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline"
+                    onClick={() => setFilterPeriod(period as any)}
+                    className={`rounded-full px-5 h-10 w-full transition-all ${
+                      isSelected 
+                        ? "bg-gradient-to-r from-[#059669] to-teal-600 text-white border-0 shadow-md shadow-emerald-500/20 font-bold" 
+                        : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold shadow-sm"
+                    }`}
+                    size="sm"
+                  >
+                    {labels[period]}
+                  </Button>
+                )}
+              </div>
             );
           })}
         </div>
@@ -346,34 +431,79 @@ export function Transactions() {
         </Card>
       </div>
 
-      <AnimatePresence>
+            {createPortal(
+        <AnimatePresence>
         {showAddForm && (
-          <motion.div initial={{ opacity: 0, y: -20, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0, height: 0, y: -20 }}>
-            <Card className="rounded-[2rem] border-0 shadow-xl bg-white dark:bg-slate-900 overflow-hidden mb-6">
-              <CardHeader className="bg-slate-50 dark:bg-slate-800/50/50 border-b border-slate-50">
-                <CardTitle className="text-lg text-slate-800 dark:text-slate-200">Tambah Transaksi Baru</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <form onSubmit={handleSubmit} className="space-y-5">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.95, opacity: 0 }} 
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[2rem] max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+                  {editingId ? "Edit Transaksi" : "Tambah Transaksi Baru"}
+                </h2>
+                <div className="flex items-center gap-2">
+                  {!editingId && (
+                    <button
+                      type="button"
+                      onClick={handleScanReceipt}
+                      disabled={isScanning}
+                      className="flex items-center gap-2 px-3 py-2 text-sm font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 dark:text-indigo-400 rounded-xl transition-colors disabled:opacity-50"
+                    >
+                      {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                      <span className="hidden sm:inline">{isScanning ? "Memindai..." : "Scan Struk (AI)"}</span>
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => { setShowAddForm(false); setEditingId(null); }}
+                    className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <X className="w-5 h-5 text-slate-500" />
+                  </button>
+                </div>
+              </div>
+              <div className="p-6 overflow-y-auto">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
                       <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Jenis Transaksi</label>
                       <div className="flex rounded-xl p-1 bg-slate-100 dark:bg-slate-800">
                         <button
                           type="button"
-                          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${type === 'expense' ? 'bg-white dark:bg-slate-900 text-rose-600 shadow-sm' : 'text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
-                          onClick={() => handleTypeChange('expense')}
+                          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${type === 'expense' ? 'bg-white dark:bg-slate-900 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
+                          onClick={() => { setType('expense'); setCategory(EXPENSE_CATEGORIES[0]); }}
                         >
                           Pengeluaran
                         </button>
                         <button
                           type="button"
-                          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${type === 'income' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
-                          onClick={() => handleTypeChange('income')}
+                          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${type === 'income' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
+                          onClick={() => { setType('income'); setCategory(INCOME_CATEGORIES[0]); }}
                         >
                           Pemasukan
                         </button>
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Tanggal</label>
+                      <Input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50"
+                        required
+                      />
                     </div>
 
                     <div className="space-y-2">
@@ -411,47 +541,42 @@ export function Transactions() {
                       <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Jumlah (Rp)</label>
                       <Input
                         type="number"
+                        placeholder="Contoh: 50000"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        placeholder="Contoh: 50000"
+                        className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50"
                         required
-                        min="0"
-                        className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl h-11"
+                        min="1"
                       />
                     </div>
 
-                    <div className="space-y-2 md:col-span-2">
+                    <div className="space-y-2">
                       <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Keterangan</label>
                       <Input
                         type="text"
+                        placeholder="Contoh: Makan siang bareng teman"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Contoh: Makan siang bareng teman"
-                        required
-                        className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl h-11"
+                        className="h-11 rounded-xl bg-slate-50 dark:bg-slate-800/50"
                       />
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowAddForm(false)}
-                      className="rounded-xl font-medium"
-                    >
-                      Batal
-                    </Button>
-                    <Button type="submit" className="bg-[#059669] text-white hover:bg-[#047857] shadow-lg shadow-emerald-900/20 rounded-xl font-semibold px-6">
-                      Simpan Transaksi
+                  <div className="pt-4 flex gap-3">
+                    <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => { setShowAddForm(false); setEditingId(null); }}>Batal</Button>
+                    <Button type="submit" className={`flex-1 h-12 rounded-xl text-white font-bold shadow-lg transition-all ${type === 'expense' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30' : 'bg-[#059669] hover:bg-[#047857] shadow-emerald-500/30'}`}>
+                      {editingId ? "Simpan Perubahan" : "Simpan Transaksi"}
                     </Button>
                   </div>
+
                 </form>
-              </CardContent>
-            </Card>
+              </div>
+            </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+        document.body
+      )}
 
       <Card className="rounded-[2rem] border-0 shadow-xl overflow-hidden bg-white dark:bg-slate-900">
         <CardContent className="p-0">
@@ -463,34 +588,34 @@ export function Transactions() {
                     <motion.div
                       whileHover={{ backgroundColor: "rgba(248, 250, 252, 1)" }}
                       key={tx.id}
-                      className="flex items-center justify-between p-5 transition-colors"
+                      className="flex items-center justify-between p-3 sm:p-5 transition-colors gap-2"
                     >
-                      <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-3 min-w-0">
                         <div
-                          className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm ${
+                          className={`flex shrink-0 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl shadow-sm ${
                             tx.type === "income"
                               ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600"
                               : "bg-rose-50 dark:bg-rose-950/50 text-rose-600"
                           }`}
                         >
                           {tx.type === "income" ? (
-                            <TrendingUp className="h-6 w-6" />
+                            <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />
                           ) : (
-                            <TrendingDown className="h-6 w-6" />
+                            <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6" />
                           )}
                         </div>
-                        <div>
-                          <p className="text-base font-bold text-slate-800 dark:text-slate-200">
+                        <div className="min-w-0">
+                          <p className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200 truncate">
                             {tx.description}
                           </p>
-                          <div className="flex items-center text-xs font-medium mt-1 gap-2">
-                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 dark:text-slate-500 px-2 py-0.5 rounded-md uppercase tracking-wide text-[10px]">
+                          <div className="flex items-center text-[9px] sm:text-[11px] font-medium mt-0.5 sm:mt-1 gap-1.5 overflow-x-auto scrollbar-hide whitespace-nowrap">
+                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-wide whitespace-nowrap">
                               {tx.category}
                             </span>
-                            <span className="text-slate-400 dark:text-slate-500">•</span>
-                            <span className="text-slate-500 dark:text-slate-400 dark:text-slate-500">{account?.name || "Akun Dihapus"}</span>
-                            <span className="text-slate-400 dark:text-slate-500">•</span>
-                            <span className="text-slate-400 dark:text-slate-500">
+                            <span className="text-slate-400 shrink-0">•</span>
+                            <span className="text-slate-500 shrink-0 truncate max-w-[70px] sm:max-w-none">{account?.name || "Akun Dihapus"}</span>
+                            <span className="text-slate-400 shrink-0">•</span>
+                            <span className="text-slate-400 shrink-0">
                               {new Date(tx.date).toLocaleDateString("id-ID", {
                                 day: "numeric",
                                 month: "short",
@@ -500,9 +625,9 @@ export function Transactions() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-1">
                         <div
-                          className={`text-base font-black ${
+                          className={`text-xs sm:text-base font-black whitespace-nowrap ${
                             tx.type === "income"
                               ? "text-emerald-600"
                               : "text-rose-600"
@@ -513,9 +638,9 @@ export function Transactions() {
                         </div>
                         <button
                           onClick={() => deleteTransaction(tx.id)}
-                          className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:bg-rose-950/50 rounded-full p-2 transition-all"
+                          className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 dark:bg-rose-950/50 rounded-full p-2 shrink-0 transition-all"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
                         </button>
                       </div>
                     </motion.div>
@@ -537,6 +662,58 @@ export function Transactions() {
           </div>
         </CardContent>
       </Card>
+
+      {showDatePickerModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 animate-in zoom-in-95">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Pilih Rentang Tanggal</h3>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Dari Tanggal</label>
+                <Input 
+                  type="date" 
+                  value={customDateRange.start}
+                  onChange={(e) => setCustomDateRange(prev => ({ ...prev, start: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Sampai Tanggal</label>
+                <Input 
+                  type="date" 
+                  value={customDateRange.end}
+                  onChange={(e) => setCustomDateRange(prev => ({ ...prev, end: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button 
+                variant="outline" 
+                className="w-full rounded-xl"
+                onClick={() => setShowDatePickerModal(false)}
+              >
+                Batal
+              </Button>
+              <Button 
+                className="w-full rounded-xl bg-[#059669] hover:bg-teal-600 text-white border-0"
+                onClick={() => {
+                  if (customDateRange.start && customDateRange.end) {
+                    setFilterPeriod("custom");
+                    setShowDatePickerModal(false);
+                  } else {
+                    alert("Mohon pilih tanggal mulai dan selesai");
+                  }
+                }}
+              >
+                Terapkan
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

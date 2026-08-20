@@ -7,6 +7,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { User, Phone, Mail, ShieldCheck, CheckCircle2, Crown, Star, ArrowRight, Check, DollarSign, Clock, Eye, EyeOff, Upload, X } from "lucide-react";
 import { motion } from "motion/react";
+import { isWebAuthnSupported } from "../lib/webauthn";
+import { Fingerprint } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export function Profile() {
@@ -25,8 +27,21 @@ export function Profile() {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(!!localStorage.getItem("saved_biometric_pass"));
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+
+  
+  const handleToggleBiometric = () => {
+    if (biometricEnabled) {
+      localStorage.removeItem("saved_biometric_email");
+      localStorage.removeItem("saved_biometric_pass");
+      setBiometricEnabled(false);
+      alert("Login biometrik telah dinonaktifkan.");
+    } else {
+      alert("Untuk mengaktifkan login biometrik, silakan logout dan login kembali, lalu centang opsi 'Gunakan Sidik Jari/FaceID'.");
+    }
+  };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +128,7 @@ export function Profile() {
 
 
   const [trialRemaining, setTrialRemaining] = useState<{days: number, hours: number} | null>(null);
+  const [planRemaining, setPlanRemaining] = useState<{days: number, hours: number} | null>(null);
 
   useEffect(() => {
     if (userProfile?.plan === 'trial' && userProfile.createdAt) {
@@ -317,6 +333,16 @@ export function Profile() {
                        <Clock className="h-4 w-4" /> Sisa: {trialRemaining.days} hari {trialRemaining.hours} jam
                      </span>
                   )}
+                  {planRemaining && userProfile?.plan === 'pro' && !userProfile?.planName?.toLowerCase().includes('selamanya') && (
+                     <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
+                       <Clock className="h-4 w-4" /> Sisa: {planRemaining.days} hari {planRemaining.hours} jam
+                     </span>
+                  )}
+                  {planRemaining && userProfile?.plan === 'pro' && !userProfile?.planName?.toLowerCase().includes('selamanya') && (
+                     <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
+                       <Clock className="h-4 w-4" /> Sisa: {planRemaining.days} hari {planRemaining.hours} jam
+                     </span>
+                  )}
 
                 </div>
               </div>
@@ -450,6 +476,35 @@ export function Profile() {
                     Simpan Password Baru
                   </Button>
                </form>
+
+               {isWebAuthnSupported() && (
+                 <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800">
+                   <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 mb-2">Login Cepat (Biometrik)</h3>
+                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Login lebih cepat dan aman menggunakan Sidik Jari atau FaceID perangkat Anda.</p>
+                   
+                   <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+                     <div className="flex items-center gap-4">
+                       <div className="h-12 w-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                         <Fingerprint className="h-6 w-6" />
+                       </div>
+                       <div>
+                         <p className="font-bold text-slate-800 dark:text-slate-200">Sidik Jari / FaceID</p>
+                         <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                           {biometricEnabled ? "Aktif di perangkat ini" : "Tidak aktif"}
+                         </p>
+                       </div>
+                     </div>
+                     <button
+                       type="button"
+                       onClick={handleToggleBiometric}
+                       className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${biometricEnabled ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                     >
+                       <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${biometricEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                     </button>
+                   </div>
+                 </div>
+               )}
+
             </div>
 
           </CardContent>

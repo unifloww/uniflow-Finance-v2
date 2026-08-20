@@ -17,6 +17,7 @@ export interface UserProfile {
   plan?: 'trial' | 'pro' | 'lifetime';
   planName?: string;
   createdAt?: string;
+  planEnd?: string;
 }
 
 interface AuthContextType {
