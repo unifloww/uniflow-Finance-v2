@@ -1,0 +1,76 @@
+const fs = require('fs');
+let code = fs.readFileSync('src/pages/Transactions.tsx', 'utf8');
+
+const oldBlock = `            return (
+              <div key={period} className={\`relative shrink-0 \${displayClass}\`}>
+                <Button 
+                  variant="outline"
+                  onClick={() => setFilterPeriod(period as any)}
+                  className={\`rounded-full px-5 h-10 w-full transition-all \${
+                    isSelected 
+                      ? "bg-gradient-to-r from-[#059669] to-teal-600 text-white border-0 shadow-md shadow-emerald-500/20 font-bold" 
+                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold shadow-sm"
+                  }\`}
+                  size="sm"
+                >
+                  {labels[period]}
+                  {period === "custom" && (
+                    <input 
+                      type="date"
+                      value={customDate}
+                      onClick={(e) => {
+                        // Ensure clicking the input also sets the filter period
+                        setFilterPeriod("custom");
+                      }}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setCustomDate(e.target.value);
+                          setFilterPeriod("custom");
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                  )}
+                </Button>
+              </div>
+            );`;
+
+const newBlock = `            return (
+              <div key={period} className={\`relative shrink-0 \${displayClass}\`}>
+                {period === "custom" && (
+                  <input 
+                    type="date"
+                    value={customDate}
+                    onClick={() => setFilterPeriod("custom")}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        setCustomDate(e.target.value);
+                        setFilterPeriod("custom");
+                      }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    style={{ WebkitAppearance: 'none' }}
+                  />
+                )}
+                <Button 
+                  variant="outline"
+                  onClick={() => setFilterPeriod(period as any)}
+                  className={\`rounded-full px-5 h-10 w-full transition-all \${
+                    isSelected 
+                      ? "bg-gradient-to-r from-[#059669] to-teal-600 text-white border-0 shadow-md shadow-emerald-500/20 font-bold" 
+                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold shadow-sm"
+                  }\`}
+                  size="sm"
+                >
+                  {labels[period]}
+                </Button>
+              </div>
+            );`;
+
+if (code.includes('key={period} className={`relative shrink-0 ${displayClass}`}')) {
+  code = code.replace(oldBlock, newBlock);
+  fs.writeFileSync('src/pages/Transactions.tsx', code);
+  console.log("Patched successfully.");
+} else {
+  console.log("Could not find the block to replace.");
+}
