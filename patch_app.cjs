@@ -1,14 +1,21 @@
 const fs = require('fs');
-let app = fs.readFileSync('src/App.tsx', 'utf8');
+let code = fs.readFileSync('src/App.tsx', 'utf8');
 
-app = app.replace(
-  'import { Login } from "./pages/Login";',
-  'import { Login } from "./pages/Login";\nimport { PhoneLogin } from "./pages/PhoneLogin";'
-);
-
-app = app.replace(
-  '<Route path="/login" element={<Login />} />',
-  '<Route path="/login" element={<Login />} />\n              <Route path="/phone-login" element={<PhoneLogin />} />'
-);
-
-fs.writeFileSync('src/App.tsx', app);
+// Add import
+if (!code.includes('InvoiceGenerator')) {
+  code = code.replace(
+    'import { Profile } from "./pages/Profile";',
+    'import { Profile } from "./pages/Profile";\nimport { InvoiceGenerator } from "./pages/InvoiceGenerator";'
+  );
+  
+  // Add route
+  code = code.replace(
+    '<Route path="/dashboard/profile" element={<Profile />} />',
+    '<Route path="/dashboard/invoice" element={<InvoiceGenerator />} />\n                  <Route path="/dashboard/profile" element={<Profile />} />'
+  );
+  
+  fs.writeFileSync('src/App.tsx', code);
+  console.log("Patched App.tsx");
+} else {
+  console.log("Already patched");
+}
