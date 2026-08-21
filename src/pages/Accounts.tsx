@@ -52,10 +52,13 @@ export function Accounts() {
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [name, setName] = useState("");
-  const [type, setType] = useState<"bank" | "wallet" | "cash">("bank");
+  const [type, setType] = useState<"bank" | "wallet" | "cash" | "investment" | "credit" | "paylater" | "asset">("bank");
   const [provider, setProvider] = useState("other");
   const [balance, setBalance] = useState("");
   const [color, setColor] = useState("#059669");
+  const [creditLimit, setCreditLimit] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [activeTab, setActiveTab] = useState<"liquid" | "credit" | "asset">("liquid");
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
@@ -66,8 +69,9 @@ export function Accounts() {
     setProvider("other");
     setBalance("");
     setColor("#059669");
+    setCreditLimit("");
+    setDueDate("");
     setShowAddForm(false);
-    setEditingId(null);
   };
 
   const handleEditClick = (acc: Account) => {
@@ -77,6 +81,8 @@ export function Accounts() {
     setProvider(acc.provider || "other");
     setBalance(acc.balance.toString());
     setColor(acc.color || "#059669");
+    setCreditLimit(acc.creditLimit ? acc.creditLimit.toString() : "");
+    setDueDate(acc.dueDate ? acc.dueDate.toString() : "");
     setShowAddForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -92,6 +98,8 @@ export function Accounts() {
         provider: provider !== "other" ? provider : null,
         balance: parseFloat(balance),
         color,
+        creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
+        dueDate: dueDate ? parseInt(dueDate) : undefined,
       });
     } else {
       addAccount({
@@ -100,6 +108,8 @@ export function Accounts() {
         provider: provider !== "other" ? provider : null,
         balance: parseFloat(balance),
         color,
+        creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
+        dueDate: dueDate ? parseInt(dueDate) : undefined,
       });
     }
 
@@ -261,9 +271,19 @@ export function Accounts() {
                           onChange={(e) => setType(e.target.value as any)}
                           className="w-full flex h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059669]"
                         >
-                          <option value="bank">Rekening Bank</option>
-                          <option value="wallet">E-Wallet</option>
-                          <option value="cash">Uang Tunai</option>
+                          <optgroup label="Kas & Likuid">
+                            <option value="bank">Rekening Bank</option>
+                            <option value="wallet">E-Wallet</option>
+                            <option value="cash">Uang Tunai</option>
+                          </optgroup>
+                          <optgroup label="Tagihan & Kredit">
+                            <option value="credit">Kartu Kredit</option>
+                            <option value="paylater">Paylater</option>
+                          </optgroup>
+                          <optgroup label="Aset & Investasi">
+                            <option value="asset">Aset Tetap (Emas, Properti, Kendaraan)</option>
+                            <option value="investment">Investasi (Saham, Reksadana)</option>
+                          </optgroup>
                         </select>
                       </div>
 
@@ -306,6 +326,40 @@ export function Accounts() {
                           className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl h-11"
                         />
                       </div>
+                      
+                      {(type === "credit" || type === "paylater") && (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                              Limit Plafon (Rp)
+                            </label>
+                            <Input
+                              type="number"
+                              value={creditLimit}
+                              onChange={(e) => setCreditLimit(e.target.value)}
+                              placeholder="0"
+                              required
+                              min="0"
+                              className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl h-11"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                              Tanggal Jatuh Tempo (Tgl 1-31)
+                            </label>
+                            <Input
+                              type="number"
+                              value={dueDate}
+                              onChange={(e) => setDueDate(e.target.value)}
+                              placeholder="Cth: 15"
+                              required
+                              min="1"
+                              max="31"
+                              className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 rounded-xl h-11"
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <div className="flex justify-end gap-3 pt-2">
@@ -401,11 +455,30 @@ export function Accounts() {
                     {acc.name}
                   </CardTitle>
                   <p className="text-[10px] font-bold text-white/70 uppercase tracking-wide mb-3">
-                    {acc.type}
+                    {acc.type === 'credit' ? 'KARTU KREDIT' : acc.type === 'paylater' ? 'PAYLATER' : acc.type === 'asset' ? 'ASET' : acc.type === 'investment' ? 'INVESTASI' : acc.type}
                   </p>
-                  <div className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
-                    {hideBalances ? "Rp •••••••" : formatCurrency(acc.balance)}
-                  </div>
+                  {["credit", "paylater"].includes(acc.type) ? (
+                    <div className="space-y-1">
+                      <div className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
+                        {hideBalances ? "Rp •••••••" : formatCurrency(Math.abs(acc.balance))}
+                        <span className="text-sm font-normal opacity-80 ml-1 text-rose-200">Tagihan</span>
+                      </div>
+                      {acc.creditLimit && (
+                        <div className="text-xs font-medium text-white/80">
+                          Sisa Limit: {hideBalances ? "••••" : formatCurrency(acc.creditLimit - Math.abs(acc.balance))}
+                        </div>
+                      )}
+                      {acc.dueDate && (
+                        <div className="text-xs font-medium text-white/80 bg-white/20 inline-block px-2 py-0.5 rounded-full mt-1">
+                          Jatuh Tempo: Tgl {acc.dueDate}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
+                      {hideBalances ? "Rp •••••••" : formatCurrency(acc.balance)}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>

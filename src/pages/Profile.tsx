@@ -7,7 +7,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { User, Phone, Mail, ShieldCheck, CheckCircle2, Crown, Star, ArrowRight, Check, DollarSign, Clock, Eye, EyeOff, Upload, X, LogOut, Briefcase } from "lucide-react";
 import { motion } from "motion/react";
-import { isWebAuthnSupported } from "../lib/webauthn";
+import { isWebAuthnSupported, registerBiometric } from "../lib/webauthn";
 import { Fingerprint } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -29,6 +29,8 @@ export function Profile() {
   const [name, setName] = useState(userProfile?.name || "");
   const [phone, setPhone] = useState(userProfile?.phone || "");
   const [businessName, setBusinessName] = useState(userProfile?.businessName || "");
+  const [businessAddress, setBusinessAddress] = useState(userProfile?.businessAddress || "");
+  const [photoURL, setPhotoURL] = useState(userProfile?.photoURL || "");
   const [isSaving, setIsSaving] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
@@ -39,17 +41,34 @@ export function Profile() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(!!localStorage.getItem("saved_biometric_pass"));
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+  const [biometricPasswordPrompt, setBiometricPasswordPrompt] = useState("");
 
 
   
-  const handleToggleBiometric = () => {
+  const handleToggleBiometric = async () => {
     if (biometricEnabled) {
       localStorage.removeItem("saved_biometric_email");
       localStorage.removeItem("saved_biometric_pass");
       setBiometricEnabled(false);
-      alert("Login biometrik telah dinonaktifkan.");
+      // alert("Login biometrik telah dinonaktifkan.");
     } else {
-      alert("Untuk mengaktifkan login biometrik, silakan logout dan login kembali, lalu centang opsi 'Gunakan Sidik Jari/FaceID'.");
+      setShowBiometricPrompt(true);
+    }
+  };
+
+  const submitBiometricSetup = async () => {
+    if (!biometricPasswordPrompt) return;
+    try {
+      await registerBiometric(userProfile?.email || '');
+      localStorage.setItem("saved_biometric_email", userProfile?.email || '');
+      localStorage.setItem("saved_biometric_pass", btoa(biometricPasswordPrompt));
+      setBiometricEnabled(true);
+      setShowBiometricPrompt(false);
+      setBiometricPasswordPrompt("");
+    } catch (err) {
+      console.error(err);
+      // alert("Gagal mengaktifkan biometrik.");
     }
   };
 
@@ -222,7 +241,7 @@ export function Profile() {
     
     // Simulate network delay
     setTimeout(async () => {
-      await updateProfile({ name, phone, businessName });
+      await updateProfile({ name, phone, businessName, businessAddress, photoURL });
       setIsSaving(false);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
@@ -525,6 +544,23 @@ export function Profile() {
                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${biometricEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                      </button>
                    </div>
+                   
+                   {showBiometricPrompt && (
+                     <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/50">
+                       <p className="text-sm text-slate-700 dark:text-slate-300 mb-2 font-medium">Masukkan password Anda untuk mengaktifkan biometrik:</p>
+                       <div className="flex gap-2">
+                         <Input 
+                           type="password" 
+                           value={biometricPasswordPrompt}
+                           onChange={(e) => setBiometricPasswordPrompt(e.target.value)}
+                           className="bg-white dark:bg-slate-800"
+                           placeholder="Password"
+                         />
+                         <Button onClick={submitBiometricSetup} className="bg-emerald-600 hover:bg-emerald-700 text-white">Simpan</Button>
+                         <Button onClick={() => setShowBiometricPrompt(false)} variant="outline">Batal</Button>
+                       </div>
+                     </div>
+                   )}
                  </div>
                )}
 

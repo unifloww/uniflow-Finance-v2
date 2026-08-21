@@ -65,10 +65,30 @@ export function Login() {
         }
       }
 
+      if (useBiometric) {
+        try {
+          await registerBiometric(email);
+          localStorage.setItem("saved_biometric_email", email);
+          localStorage.setItem("saved_biometric_pass", btoa(password));
+        } catch (biometricErr) {
+          console.error("Biometric registration failed:", biometricErr);
+        }
+      }
+
+      if (useBiometric) {
+        try {
+          await registerBiometric(email);
+          localStorage.setItem("saved_biometric_email", email);
+          localStorage.setItem("saved_biometric_pass", btoa(password));
+        } catch (biometricErr) {
+          console.error("Biometric registration failed:", biometricErr);
+        }
+      }
+
       if (role === 'superadmin') {
-        window.location.href = "/admin/dashboard";
+        navigate("/admin/dashboard");
       } else {
-        window.location.href = "/dashboard";
+        navigate("/dashboard");
       }
     } catch (err: any) {
       console.error(err);
@@ -116,6 +136,16 @@ export function Login() {
         if (email === "fitopatner@gmail.com" && role !== "superadmin") {
           role = "superadmin";
           await setDoc(docRef, { role: "superadmin" }, { merge: true });
+        }
+      }
+
+      if (useBiometric) {
+        try {
+          await registerBiometric(email);
+          localStorage.setItem("saved_biometric_email", email);
+          localStorage.setItem("saved_biometric_pass", btoa(password));
+        } catch (biometricErr) {
+          console.error("Biometric registration failed:", biometricErr);
         }
       }
 

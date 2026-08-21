@@ -13,6 +13,8 @@ export interface UserProfile {
   name: string;
   phone?: string;
   businessName?: string;
+  businessAddress?: string;
+  photoURL?: string;
   role: 'user' | 'superadmin';
   status: 'active' | 'suspended' | 'pending';
   plan?: 'trial' | 'pro' | 'lifetime';

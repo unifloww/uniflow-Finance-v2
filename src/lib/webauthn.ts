@@ -35,8 +35,16 @@ export const registerBiometric = async (userEmail: string) => {
     attestation: "none"
   };
 
-  const credential = await navigator.credentials.create({ publicKey });
-  return credential;
+  try {
+    const credential = await navigator.credentials.create({ publicKey });
+    
+  } catch (err: any) {
+    if (err.name === 'NotAllowedError' || err.message.includes('Permissions Policy') || err.message.includes('publickey-credentials-create')) {
+      alert("Peringatan: Browser atau frame memblokir pembuatan biometrik.\nJika Anda menggunakan preview, silakan buka aplikasi di tab baru (Open in New Tab) untuk mengaktifkan FaceID/Sidik Jari.");
+    }
+    throw err;
+  }
+  /* return credential; */
 };
 
 export const loginBiometric = async () => {
@@ -49,6 +57,14 @@ export const loginBiometric = async () => {
     timeout: 60000
   };
 
-  const assertion = await navigator.credentials.get({ publicKey });
-  return assertion;
+  try {
+    const assertion = await navigator.credentials.get({ publicKey });
+    
+  } catch (err: any) {
+    if (err.name === 'NotAllowedError' || err.message.includes('Permissions Policy') || err.message.includes('publickey-credentials-get')) {
+      alert("Peringatan: Browser memblokir login biometrik.\nSilakan buka aplikasi di tab baru (Open in New Tab) untuk menggunakan FaceID/Sidik Jari.");
+    }
+    throw err;
+  }
+  /* return assertion; */
 };

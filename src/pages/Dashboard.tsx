@@ -141,20 +141,40 @@ export function Dashboard() {
         plusText: 'text-emerald-200 hover:text-[#059669]'
       };
 
-  const totalBalance = useMemo(() => {
-    return accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const { netWorth, totalBalance, totalDebt, totalAssets } = useMemo(() => {
+    let liquid = 0;
+    let debt = 0;
+    let assets = 0;
+    
+    accounts.forEach(acc => {
+      if (['bank', 'wallet', 'cash'].includes(acc.type)) liquid += acc.balance;
+      else if (['credit', 'paylater'].includes(acc.type)) debt += Math.abs(acc.balance);
+      else if (['asset', 'investment'].includes(acc.type)) assets += acc.balance;
+    });
+    
+    const netWorth = liquid + assets - debt;
+    return { netWorth, totalBalance: liquid, totalDebt: debt, totalAssets: assets };
   }, [accounts]);
 
-  const { income, expense } = useMemo(() => {
+  const { income, expense, payable, receivable } = useMemo(() => {
     let income = 0;
     let expense = 0;
+    let payable = 0;
+    let receivable = 0;
 
     transactions.forEach((tx) => {
       if (tx.type === "income") income += tx.amount;
       if (tx.type === "expense") expense += tx.amount;
+      if (tx.type === "payable") payable += tx.amount;
+      if (tx.type === "receivable") receivable += tx.amount;
     });
-    return { income, expense };
+    return { income, expense, payable, receivable };
   }, [transactions]);
+  
+  const netProfit = income - expense;
+  // Calculate simple percentage based on income vs expense, or past vs current. For now, we can just show margin.
+  const netProfitMargin = income > 0 ? (netProfit / income) * 100 : 0;
+  
 
   // Today's summary calculation
   const { todayIncome, todayExpense, todayDelta, todayCount } = useMemo(() => {
@@ -330,30 +350,38 @@ export function Dashboard() {
           {/* Balance & Delta Trend */}
           <div className="relative z-10 pt-4 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-emerald-200/90">
-                TOTAL BALANCE
+              <p className={`text-[11px] font-black uppercase tracking-widest ${themeClasses.textAccentBright}`}>
+                KEKAYAAN BERSIH
               </p>
               <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-base sm:text-xl font-black text-emerald-200">Rp</span>
+                <span className={`text-base sm:text-xl font-black ${themeClasses.textAccentBright}`}>Rp</span>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-md">
-                  {hideBalances ? "•••••••" : (totalBalance).toLocaleString("id-ID")}
+                  {hideBalances ? "•••••••" : (netWorth).toLocaleString("id-ID")}
                 </h2>
               </div>
             </div>
             
             {/* Delta Trend on the right */}
-            <div className="flex items-center gap-1.5 self-start sm:self-auto text-xs sm:text-sm font-bold text-emerald-100 drop-shadow-sm bg-black/10 sm:bg-transparent px-2.5 py-1 sm:p-0 rounded-full">
-              <TrendingUp className="w-4 h-4 text-emerald-200 shrink-0" />
-              <span>
-                {todayCount > 0 
-                  ? (todayDelta >= 0 ? `Rp ${Math.abs(todayDelta).toLocaleString("id-ID")} today` : `-Rp ${Math.abs(todayDelta).toLocaleString("id-ID")} today`)
-                  : `${accounts.length} akun aktif`}
-              </span>
+            <div className="flex flex-col items-end gap-2">
+              <div className={`flex items-center gap-1.5 self-start sm:self-auto text-xs sm:text-sm font-bold ${themeClasses.textLight} drop-shadow-sm bg-black/10 sm:bg-transparent px-2.5 py-1 sm:p-0 rounded-full`}>
+                <span>{accounts.length} akun aktif</span>
+              </div>
+              {(totalAssets > 0 || totalDebt > 0) && (
+                <div className="flex flex-col items-end text-xs font-medium text-white/80 gap-1 bg-black/10 backdrop-blur-sm px-3 py-2 rounded-xl border border-white/10">
+                  <div className="flex gap-4">
+                    <span>Kas: {hideBalances ? "•••" : formatCurrency(totalBalance)}</span>
+                    {totalAssets > 0 && <span className="text-indigo-200">Aset: {hideBalances ? "•••" : formatCurrency(totalAssets)}</span>}
+                  </div>
+                  {totalDebt > 0 && <span className="text-rose-300">Hutang: {hideBalances ? "•••" : formatCurrency(totalDebt)}</span>}
+                </div>
+              )}
             </div>
           </div>
+          
+          
 
           {/* Pocket Action Buttons Row */}
-          <div className="relative z-10 mt-7 flex items-center gap-3">
+          <div className="relative z-10 mt-6 flex items-center gap-3">
             <Link
               to="/dashboard/analytics"
               className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md py-3.5 px-5 text-xs sm:text-sm font-black text-white shadow-md border border-white/25 transition-all active:scale-95 cursor-pointer"
@@ -380,24 +408,69 @@ export function Dashboard() {
           </div>
         </div>
       </motion.div>
+      {activeWorkspace === 'business' && (
+        <motion.div variants={itemVariants} className="mb-6">
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white dark:bg-slate-900">
+            <div className="flex justify-between h-full flex-col">
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pemasukan</div>
+                  <h3 className="text-sm font-black text-cyan-600">{hideBalances ? "••••••" : formatCurrency(income)}</h3>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pengeluaran</div>
+                  <h3 className="text-sm font-black text-rose-600">{hideBalances ? "••••••" : formatCurrency(expense)}</h3>
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Laba Bersih</div>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white">{hideBalances ? "••••••" : formatCurrency(netProfit)}</h2>
+                  <span className={`text-xs font-bold ${netProfitMargin >= 0 ? 'text-emerald-500' : 'text-rose-500'} flex items-center`}>
+                    {netProfitMargin >= 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                    {Math.abs(netProfitMargin).toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+      )}
 
       
       {activeWorkspace === 'business' && (
         <motion.div variants={itemVariants} className="mb-6">
-          <Link to="/dashboard/invoice" className="flex items-center justify-between bg-cyan-600 hover:bg-cyan-700 text-white rounded-[2rem] p-5 shadow-lg shadow-cyan-900/20 transition-all active:scale-[0.98]">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                <FileText className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-500" /> Aksi Cepat
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Link to="/dashboard/transactions" state={{ openAdd: true, defaultType: 'income' }} className="flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:shadow-md transition-all">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
               </div>
-              <div>
-                <h3 className="font-bold text-lg">Buat Invoice Baru</h3>
-                <p className="text-cyan-100 text-xs font-medium">Buat dan unduh tagihan PDF untuk klien</p>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Pemasukan</span>
+            </Link>
+            <Link to="/dashboard/transactions" state={{ openAdd: true, defaultType: 'expense' }} className="flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:border-rose-200 hover:shadow-md transition-all">
+              <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center">
+                <TrendingDown className="w-5 h-5 text-rose-600" />
               </div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
-              <ChevronRight className="w-5 h-5" />
-            </div>
-          </Link>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Pengeluaran</span>
+            </Link>
+            <Link to="/dashboard/invoice" className="flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:border-cyan-200 hover:shadow-md transition-all">
+              <div className="w-10 h-10 rounded-full bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-cyan-600" />
+              </div>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Invoice</span>
+            </Link>
+            <Link to="/dashboard/transactions" state={{ openAdd: true, defaultType: 'transfer' }} className="flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:border-indigo-200 hover:shadow-md transition-all">
+              <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                <ArrowRightLeft className="w-5 h-5 text-indigo-600" />
+              </div>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Transaksi</span>
+            </Link>
+          </div>
         </motion.div>
       )}
 
@@ -706,70 +779,148 @@ export function Dashboard() {
       
       {activeWorkspace === 'business' && (
         <motion.div variants={itemVariants} className="mb-6">
-          <Link to="/dashboard/invoice" className="flex items-center justify-between bg-cyan-600 hover:bg-cyan-700 text-white rounded-[2rem] p-5 shadow-lg shadow-cyan-900/20 transition-all active:scale-[0.98]">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                <FileText className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-500" /> Aksi Cepat
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Link to="/dashboard/transactions" state={{ openAdd: true, defaultType: 'income' }} className="flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:border-emerald-200 hover:shadow-md transition-all">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
               </div>
-              <div>
-                <h3 className="font-bold text-lg">Buat Invoice Baru</h3>
-                <p className="text-cyan-100 text-xs font-medium">Buat dan unduh tagihan PDF untuk klien</p>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Pemasukan</span>
+            </Link>
+            <Link to="/dashboard/transactions" state={{ openAdd: true, defaultType: 'expense' }} className="flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:border-rose-200 hover:shadow-md transition-all">
+              <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center">
+                <TrendingDown className="w-5 h-5 text-rose-600" />
               </div>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm">
-              <ChevronRight className="w-5 h-5" />
-            </div>
-          </Link>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Pengeluaran</span>
+            </Link>
+            <Link to="/dashboard/invoice" className="flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:border-cyan-200 hover:shadow-md transition-all">
+              <div className="w-10 h-10 rounded-full bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-cyan-600" />
+              </div>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Invoice</span>
+            </Link>
+            <Link to="/dashboard/transactions" state={{ openAdd: true, defaultType: 'transfer' }} className="flex flex-col items-center justify-center gap-2 bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-slate-800 hover:border-indigo-200 hover:shadow-md transition-all">
+              <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                <ArrowRightLeft className="w-5 h-5 text-indigo-600" />
+              </div>
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Transaksi</span>
+            </Link>
+          </div>
         </motion.div>
       )}
 
-      {/* 4 Cards Grid */}
-      <div className="grid grid-cols-4 gap-5 mb-8">
-        <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
-          <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Total Dana</div>
-          <div className="flex justify-between items-start">
-             <h2 className="text-3xl font-black text-slate-900">{hideBalances ? "••••••" : formatCurrency(totalBalance)}</h2>
-             <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
-                <Wallet className="w-5 h-5 text-indigo-500" />
-             </div>
-          </div>
-          <p className="text-[11px] font-bold text-slate-400 mt-4">Dari {accounts.length} akun aktif</p>
-        </Card>
+      {/* Desktop Cards Grid */}
+      {activeWorkspace === 'business' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white dark:bg-slate-900 border-t-4 border-t-cyan-500">
+            <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Kas & Likuid</div>
+            <div className="flex justify-between items-start">
+              <h2 className="text-3xl font-black text-slate-900 dark:text-white">{hideBalances ? "••••••" : formatCurrency(totalBalance)}</h2>
+              <div className="w-10 h-10 rounded-full bg-cyan-50 flex items-center justify-center shrink-0">
+                <Wallet className="w-5 h-5 text-cyan-600" />
+              </div>
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 mt-4">Dari {accounts.length} akun aktif</p>
+          </Card>
 
-        <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
-          <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Pemasukan</div>
-          <div className="flex justify-between items-start">
-             <h2 className="text-3xl font-black text-[#059669]">{hideBalances ? "••••••" : formatCurrency(income)}</h2>
-             <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-5 h-5 text-[#059669]" />
-             </div>
-          </div>
-          <p className="text-[11px] font-bold text-slate-400 mt-4">Total akumulasi</p>
-        </Card>
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white dark:bg-slate-900">
+            <div className="flex justify-between h-full flex-col">
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pemasukan</div>
+                  <h3 className="text-sm font-black text-cyan-600">{hideBalances ? "••••••" : formatCurrency(income)}</h3>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Pengeluaran</div>
+                  <h3 className="text-sm font-black text-rose-600">{hideBalances ? "••••••" : formatCurrency(expense)}</h3>
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Laba Bersih</div>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white">{hideBalances ? "••••••" : formatCurrency(netProfit)}</h2>
+                  <span className={`text-xs font-bold ${netProfitMargin >= 0 ? 'text-emerald-500' : 'text-rose-500'} flex items-center`}>
+                    {netProfitMargin >= 0 ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                    {Math.abs(netProfitMargin).toFixed(1)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
 
-        <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
-          <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Pengeluaran</div>
-          <div className="flex justify-between items-start">
-             <h2 className="text-3xl font-black text-rose-600">{hideBalances ? "••••••" : formatCurrency(expense)}</h2>
-             <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
-                <TrendingDown className="w-5 h-5 text-rose-600" />
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white dark:bg-slate-900">
+             <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Piutang (Hutang Klien)</div>
+             <div className="flex justify-between items-start">
+               <h2 className="text-3xl font-black text-indigo-600">{hideBalances ? "••••••" : formatCurrency(receivable)}</h2>
+               <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                  <ArrowRightLeft className="w-5 h-5 text-indigo-500" />
+               </div>
              </div>
-          </div>
-          <p className="text-[11px] font-bold text-slate-400 mt-4">Total akumulasi</p>
-        </Card>
-
-        <Card className="rounded-[1.5rem] border-0 shadow-lg bg-[#047857] text-white p-5">
-          <div className="text-[11px] font-bold text-emerald-200 mb-2 uppercase tracking-wider">Cashflow</div>
-          <div className="flex justify-between items-start">
-             <h2 className="text-3xl font-black">{hideBalances ? "••••••" : formatCurrency(income - expense)}</h2>
-             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <Activity className="w-5 h-5 text-white" />
+             <p className="text-[11px] font-bold text-slate-400 mt-4">Uang masuk tertunda</p>
+          </Card>
+          
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white dark:bg-slate-900">
+             <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Hutang Bisnis</div>
+             <div className="flex justify-between items-start">
+               <h2 className="text-3xl font-black text-amber-600">{hideBalances ? "••••••" : formatCurrency(payable)}</h2>
+               <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                  <Activity className="w-5 h-5 text-amber-500" />
+               </div>
              </div>
-          </div>
-          <p className="text-[11px] font-bold text-emerald-200 mt-4">Selisih masuk & keluar</p>
-        </Card>
-      </div>
+             <p className="text-[11px] font-bold text-slate-400 mt-4">Kewajiban bayar</p>
+          </Card>
+        </div>
+      ) : (
+        <div className="grid grid-cols-4 gap-5 mb-8">
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
+            <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Kas & Likuid</div>
+            <div className="flex justify-between items-start">
+               <h2 className="text-3xl font-black text-slate-900">{hideBalances ? "••••••" : formatCurrency(totalBalance)}</h2>
+               <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+                  <Wallet className="w-5 h-5 text-indigo-500" />
+               </div>
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 mt-4">Dari {accounts.length} akun aktif</p>
+          </Card>
 
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
+            <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Pemasukan</div>
+            <div className="flex justify-between items-start">
+               <h2 className="text-3xl font-black text-[#059669]">{hideBalances ? "••••••" : formatCurrency(income)}</h2>
+               <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5 text-[#059669]" />
+               </div>
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 mt-4">Total akumulasi</p>
+          </Card>
+
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
+            <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Pengeluaran</div>
+            <div className="flex justify-between items-start">
+               <h2 className="text-3xl font-black text-rose-600">{hideBalances ? "••••••" : formatCurrency(expense)}</h2>
+               <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+                  <TrendingDown className="w-5 h-5 text-rose-600" />
+               </div>
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 mt-4">Total akumulasi</p>
+          </Card>
+
+          <Card className="rounded-[1.5rem] border-0 shadow-lg bg-[#047857] text-white p-5">
+            <div className="text-[11px] font-bold text-emerald-200 mb-2 uppercase tracking-wider">Cashflow</div>
+            <div className="flex justify-between items-start">
+               <h2 className="text-3xl font-black">{hideBalances ? "••••••" : formatCurrency(income - expense)}</h2>
+               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <Activity className="w-5 h-5 text-white" />
+               </div>
+            </div>
+            <p className="text-[11px] font-bold text-emerald-200 mt-4">Selisih masuk & keluar</p>
+          </Card>
+        </div>
+      )}
       {/* Bottom Section */}
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2">

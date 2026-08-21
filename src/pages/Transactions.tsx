@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import React, { useState, useMemo, useEffect } from "react";
 import { useData } from "../contexts/DataContext";
+import { useAuth } from "../contexts/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -50,6 +51,7 @@ const incomeCategories = [
 
 export function Transactions() {
   const { transactions, accounts, addTransaction, deleteTransaction, activeWorkspace } = useData();
+  const { currentUser, userProfile } = useAuth();
   const expenseCategories = activeWorkspace === 'business' ? ['Pembelian Stok/Bahan', 'Gaji Karyawan', 'Operasional', 'Pemasaran', 'Sewa Tempat', 'Pajak', 'Lainnya'] : ['Makanan & Minuman', 'Transportasi', 'Belanja', 'Tagihan & Utilitas', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
   const incomeCategories = activeWorkspace === 'business' ? ['Penjualan Produk', 'Pendapatan Jasa', 'Pendapatan Lainnya'] : ['Gaji', 'Bonus', 'Investasi', 'Pemberian', 'Lainnya'];
   const location = useLocation();
@@ -57,7 +59,7 @@ export function Transactions() {
   
   const [showAddForm, setShowAddForm] = useState(false);
   const [amount, setAmount] = useState("");
-  const [type, setType] = useState<"income" | "expense">("expense");
+  const [type, setType] = useState<"income" | "expense" | "payable" | "receivable">("expense");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -68,7 +70,10 @@ export function Transactions() {
   const [filterPeriod, setFilterPeriod] = useState<"all" | "daily" | "weekly" | "monthly" | "custom">("all");
   const [customDateRange, setCustomDateRange] = useState({ start: "", end: "" });
   useEffect(() => {
-    setCategory(type === "expense" ? expenseCategories[0] : incomeCategories[0]);
+    if (type === "expense") setCategory(expenseCategories[0]);
+    else if (type === "income") setCategory(incomeCategories[0]);
+    else if (type === "payable") setCategory("Hutang (Pinjaman Diterima)");
+    else if (type === "receivable") setCategory("Piutang (Pinjaman Diberikan)");
   }, [type, activeWorkspace]);
   const [showDatePickerModal, setShowDatePickerModal] = useState(false);
   
@@ -78,6 +83,9 @@ export function Transactions() {
   useEffect(() => {
     // Open add form if navigated from FAB
     if (location.state?.openAdd) {
+      if (location.state.defaultType) {
+        setType(location.state.defaultType);
+      }
       setShowAddForm(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       // Clear state so refresh doesn't trigger it again
@@ -201,58 +209,220 @@ export function Transactions() {
 
   const exportToPDF = async () => {
     const doc = new jsPDF();
-    
-    // Add simple branding to header
-    doc.setFillColor(5, 150, 105); // UniFlow green
-    doc.rect(0, 0, 210, 30, "F");
-    
-    try {
-      const response = await fetch("https://firebasestorage.googleapis.com/v0/b/uniflow/o/Uniflow%20White.png?alt=media&token=ed8e2972-f297-4861-9920-c8145506122d");
-      const blob = await response.blob();
-      const base64data = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-      doc.addImage(base64data, "PNG", 14, 8, 30, 12);
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
-      doc.text(`Laporan Transaksi - UniFlow Finance`, 50, 14);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Periode: ${filterPeriod.toUpperCase()} | Dicetak: ${new Date().toLocaleString('id-ID')}`, 50, 21);
-    } catch (e) {
-      doc.setFillColor(255, 255, 255);
-      doc.circle(24, 15, 8, "F");
-      doc.setTextColor(5, 150, 105);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("UF", 20.5, 16.5);
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
-      doc.text(`Laporan Transaksi - UniFlow Finance`, 40, 14);
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Periode: ${filterPeriod.toUpperCase()} | Dicetak: ${new Date().toLocaleString('id-ID')}`, 40, 21);
-    }
-    
-    const tableData = filteredTransactions.map(tx => {
-      const accName = accounts.find(a => a.id === tx.accountId)?.name || "Unknown";
-      const dateStr = new Date(tx.date).toLocaleDateString("id-ID");
-      const amountStr = `${tx.type === "income" ? "+" : "-"}${formatCurrency(tx.amount)}`;
-      return [dateStr, tx.description, tx.category, accName, amountStr];
-    });
 
-    autoTable(doc, {
-      head: [["Tanggal", "Keterangan", "Kategori", "Akun", "Jumlah"]],
-      body: tableData,
-      startY: 35,
-      styles: { fontSize: 10, cellPadding: 4 },
-      headStyles: { fillColor: [16, 124, 95], textColor: [255, 255, 255] },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
+    if (activeWorkspace === 'business') {
+      // Bisnis - Corporate Style Statement
+      // Calculation of Period and Initial Balance
+      let periodStartDate: Date | null = null;
+      let periodEndDate: Date | null = new Date();
+      const now = new Date();
+      if (filterPeriod === "daily") {
+        periodStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      } else if (filterPeriod === "weekly") {
+        periodStartDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        periodStartDate.setHours(0,0,0,0);
+      } else if (filterPeriod === "monthly") {
+        periodStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (filterPeriod === "custom" && customDateRange.start && customDateRange.end) {
+        periodStartDate = new Date(customDateRange.start);
+        periodEndDate = new Date(customDateRange.end);
+        periodEndDate.setHours(23, 59, 59, 999);
+      }
+      
+      let saldoAwal = 0;
+      if (periodStartDate) {
+          const priorTransactions = transactions.filter(tx => new Date(tx.date).getTime() < periodStartDate!.getTime());
+          priorTransactions.forEach(tx => {
+              if (tx.type === "income" || tx.type === "payable") saldoAwal += tx.amount;
+              if (tx.type === "expense" || tx.type === "receivable") saldoAwal -= tx.amount;
+          });
+      }
+      
+      // Header background (Blue)
+      doc.setFillColor(0, 102, 204);
+      doc.rect(0, 0, 210, 30, "F");
+      
+      // Header Text
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text("e-Statement", 14, 20);
+      
+      // Logo
+      try {
+        const response = await fetch("https://firebasestorage.googleapis.com/v0/b/uniflow/o/Uniflow%20White.png?alt=media&token=ed8e2972-f297-4861-9920-c8145506122d");
+        const blob = await response.blob();
+        const base64data = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        doc.addImage(base64data, "PNG", 150, 8, 40, 16);
+      } catch (e) {
+        doc.setFontSize(16);
+        doc.text("UniFlow Finance", 150, 20);
+      }
+      
+      // Metadata block
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      
+      // Left col
+      doc.text("Nama/Name", 14, 40);
+      doc.setFont("helvetica", "normal");
+      doc.text(`: ${userProfile?.businessName || userProfile?.name || "Bisnis Anda"}`, 55, 40);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Penanggung Jawab", 14, 46);
+      doc.setFont("helvetica", "normal");
+      doc.text(`: ${userProfile?.name || currentUser?.email || "User"}`, 55, 46);
+      
+      // Right col
+      let periodStr = "-";
+      if (periodStartDate && periodEndDate) {
+        periodStr = `${periodStartDate.toLocaleDateString('id-ID')} - ${periodEndDate.toLocaleDateString('id-ID')}`;
+      } else if (filterPeriod === 'all') {
+        periodStr = "Semua Waktu";
+      }
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Periode/Period", 110, 40);
+      doc.setFont("helvetica", "normal");
+      doc.text(`: ${periodStr}`, 155, 40);
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Dicetak pada/Issued on", 110, 46);
+      doc.setFont("helvetica", "normal");
+      doc.text(`: ${new Date().toLocaleDateString('id-ID')}`, 155, 46);
+      
+      // Summary Card
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Ringkasan Keuangan", 14, 60);
+      
+      doc.setDrawColor(220, 220, 220);
+      doc.roundedRect(100, 52, 96, 36, 2, 2, "S");
+      
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Saldo Awal/Initial Balance", 105, 59);
+      doc.setFont("helvetica", "normal");
+      doc.text(`:`, 155, 59);
+      doc.text(formatCurrency(saldoAwal), 192, 59, { align: 'right' });
+      
+      doc.setFont("helvetica", "bold");
+      doc.text("Dana Masuk/Incoming", 105, 67);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(5, 150, 105); // green
+      doc.text(`:`, 155, 67);
+      doc.text(`+${formatCurrency(totals.income)}`, 192, 67, { align: 'right' });
+      
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.text("Dana Keluar/Outgoing", 105, 75);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(225, 29, 72); // red
+      doc.text(`:`, 155, 75);
+      doc.text(`-${formatCurrency(totals.expense)}`, 192, 75, { align: 'right' });
+      
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+      doc.text("Saldo Akhir/Closing Balance", 105, 83);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 102, 204); // blue
+      doc.text(`:`, 155, 83);
+      doc.text(formatCurrency(saldoAwal + totals.income - totals.expense), 192, 83, { align: 'right' });
+      
+      doc.setTextColor(0, 0, 0);
+      
+      // Sort ascending for the table
+      const sortedForTable = [...filteredTransactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      let runningBalance = saldoAwal;
+      const tableData = sortedForTable.map((tx, idx) => {
+        const dateStr = new Date(tx.date).toLocaleDateString("id-ID") + '\n' + new Date(tx.date).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+        const isIncome = tx.type === "income" || tx.type === "payable";
+        const amount = tx.amount;
+        runningBalance += isIncome ? amount : -amount;
+        
+        const amountStr = `${isIncome ? "" : "-"}${formatCurrency(amount)}`;
+        return [
+          (idx + 1).toString(),
+          dateStr,
+          tx.description + "\n" + tx.category,
+          amountStr,
+          formatCurrency(runningBalance)
+        ];
+      });
+
+      autoTable(doc, {
+        head: [["No\nNo", "Tanggal\nDate", "Keterangan\nRemarks", "Nominal (IDR)\nAmount (IDR)", "Saldo (IDR)\nBalance (IDR)"]],
+        body: tableData,
+        startY: 95,
+        styles: { fontSize: 9, cellPadding: 4, valign: 'middle' },
+        headStyles: { fillColor: [240, 244, 248], textColor: [15, 23, 42], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [255, 255, 255] },
+        columnStyles: {
+          0: { cellWidth: 15 },
+          1: { cellWidth: 35 },
+          3: { halign: 'right' },
+          4: { halign: 'right', fontStyle: 'bold', textColor: [0, 102, 204] },
+        }
+      });
+    } else {
+      // Personal - Standard Style
+      doc.setFillColor(5, 150, 105); // UniFlow green
+      doc.rect(0, 0, 210, 30, "F");
+      
+      try {
+        const response = await fetch("https://firebasestorage.googleapis.com/v0/b/uniflow/o/Uniflow%20White.png?alt=media&token=ed8e2972-f297-4861-9920-c8145506122d");
+        const blob = await response.blob();
+        const base64data = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+        doc.addImage(base64data, "PNG", 14, 8, 30, 12);
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.text(`Laporan Transaksi - UniFlow Finance`, 50, 14);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Periode: ${filterPeriod.toUpperCase()} | Dicetak: ${new Date().toLocaleString('id-ID')}`, 50, 21);
+      } catch (e) {
+        doc.setFillColor(255, 255, 255);
+        doc.circle(24, 15, 8, "F");
+        doc.setTextColor(5, 150, 105);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.text("UF", 20.5, 16.5);
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(16);
+        doc.text(`Laporan Transaksi - UniFlow Finance`, 40, 14);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Periode: ${filterPeriod.toUpperCase()} | Dicetak: ${new Date().toLocaleString('id-ID')}`, 40, 21);
+      }
+      
+      const tableData = filteredTransactions.map(tx => {
+        const accName = accounts.find(a => a.id === tx.accountId)?.name || "Unknown";
+        const dateStr = new Date(tx.date).toLocaleDateString("id-ID");
+        const amountStr = `${tx.type === "income" || tx.type === "payable" ? "+" : "-"}${formatCurrency(tx.amount)}`;
+        return [dateStr, tx.description, tx.category, accName, amountStr];
+      });
+
+      autoTable(doc, {
+        head: [["Tanggal", "Keterangan", "Kategori", "Akun", "Jumlah"]],
+        body: tableData,
+        startY: 35,
+        styles: { fontSize: 10, cellPadding: 4 },
+        headStyles: { fillColor: [16, 124, 95], textColor: [255, 255, 255] },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+      });
+    }
 
     try {
       doc.save(`Uniflow_Transaksi_${new Date().getTime()}.pdf`);
@@ -482,21 +652,39 @@ export function Transactions() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
                       <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Jenis Transaksi</label>
-                      <div className="flex rounded-xl p-1 bg-slate-100 dark:bg-slate-800">
+                      <div className={`flex rounded-xl p-1 bg-slate-100 dark:bg-slate-800 ${activeWorkspace === 'business' ? 'flex-wrap gap-1' : ''}`}>
                         <button
                           type="button"
-                          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${type === 'expense' ? 'bg-white dark:bg-slate-900 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
+                          className={`flex-1 min-w-[40%] py-2 text-sm font-bold rounded-lg transition-all ${type === 'expense' ? 'bg-white dark:bg-slate-900 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
                           onClick={() => setType('expense')}
                         >
                           Pengeluaran
                         </button>
                         <button
                           type="button"
-                          className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${type === 'income' ? `bg-white dark:bg-slate-900 ${activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600'} shadow-sm` : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
+                          className={`flex-1 min-w-[40%] py-2 text-sm font-bold rounded-lg transition-all ${type === 'income' ? `bg-white dark:bg-slate-900 ${activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600'} shadow-sm` : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
                           onClick={() => setType('income')}
                         >
                           Pemasukan
                         </button>
+                        {activeWorkspace === 'business' && (
+                          <>
+                            <button
+                              type="button"
+                              className={`flex-1 min-w-[40%] py-2 text-sm font-bold rounded-lg transition-all ${type === 'payable' ? 'bg-white dark:bg-slate-900 text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
+                              onClick={() => setType('payable')}
+                            >
+                              Hutang
+                            </button>
+                            <button
+                              type="button"
+                              className={`flex-1 min-w-[40%] py-2 text-sm font-bold rounded-lg transition-all ${type === 'receivable' ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
+                              onClick={() => setType('receivable')}
+                            >
+                              Piutang
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -536,7 +724,7 @@ export function Transactions() {
                         className="w-full flex h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 ${activeWorkspace === 'business' ? 'focus-visible:ring-cyan-600' : 'focus-visible:ring-[#059669]'}"
                         required
                       >
-                        {(type === 'expense' ? expenseCategories : incomeCategories).map(cat => (
+                        {(type === 'expense' ? expenseCategories : type === 'income' ? incomeCategories : type === 'payable' ? ['Hutang (Pinjaman Diterima)'] : ['Piutang (Pinjaman Diberikan)']).map(cat => (
                           <option key={cat} value={cat}>{cat}</option>
                         ))}
                       </select>
@@ -569,7 +757,7 @@ export function Transactions() {
 
                   <div className="pt-4 flex gap-3">
                     <Button type="button" variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => { setShowAddForm(false); setEditingId(null); }}>Batal</Button>
-                    <Button type="submit" className={`flex-1 h-12 rounded-xl text-white font-bold shadow-lg transition-all ${type === 'expense' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30' : 'bg-[#059669] hover:bg-[#047857] shadow-emerald-500/30'}`}>
+                    <Button type="submit" className={`flex-1 h-12 rounded-xl text-white font-bold shadow-lg transition-all ${type === 'expense' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30' : type === 'payable' ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/30' : type === 'receivable' ? 'bg-indigo-500 hover:bg-indigo-600 shadow-indigo-500/30' : activeWorkspace === 'business' ? 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-500/30' : 'bg-[#059669] hover:bg-[#047857] shadow-emerald-500/30'}`}>
                       {editingId ? "Simpan Perubahan" : "Simpan Transaksi"}
                     </Button>
                   </div>
@@ -598,12 +786,13 @@ export function Transactions() {
                       <div className="flex items-center space-x-3 min-w-0">
                         <div
                           className={`flex shrink-0 h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl shadow-sm ${
-                            tx.type === "income"
-                              ? "bg-emerald-50 dark:bg-emerald-950/50 ${activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600'}"
-                              : "bg-rose-50 dark:bg-rose-950/50 text-rose-600"
+                            tx.type === "income" ? (activeWorkspace === 'business' ? 'bg-cyan-50 text-cyan-600' : 'bg-emerald-50 text-emerald-600') :
+                            tx.type === "payable" ? 'bg-amber-50 text-amber-600' :
+                            tx.type === "receivable" ? 'bg-indigo-50 text-indigo-600' :
+                            'bg-rose-50 text-rose-600'
                           }`}
                         >
-                          {tx.type === "income" ? (
+                          {(tx.type === "income" || tx.type === "payable") ? (
                             <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />
                           ) : (
                             <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -633,12 +822,13 @@ export function Transactions() {
                       <div className="flex items-center gap-2 sm:gap-4 shrink-0 pl-1">
                         <div
                           className={`text-xs sm:text-base font-black whitespace-nowrap ${
-                            tx.type === "income"
-                              ? "${activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600'}"
-                              : "text-rose-600"
+                            tx.type === "income" ? (activeWorkspace === 'business' ? 'text-cyan-600' : 'text-emerald-600') :
+                            tx.type === "payable" ? 'text-amber-600' :
+                            tx.type === "receivable" ? 'text-indigo-600' :
+                            'text-rose-600'
                           }`}
                         >
-                          {tx.type === "expense" ? "-" : "+"}
+                          {(tx.type === "expense" || tx.type === "receivable") ? "-" : "+"}
                           {formatCurrency(tx.amount)}
                         </div>
                         <button

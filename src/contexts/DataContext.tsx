@@ -6,7 +6,9 @@ import { collection, query, where, onSnapshot, doc, setDoc, deleteDoc, writeBatc
 export interface Account {
   id: string;
   name: string;
-  type: 'bank' | 'wallet' | 'cash' | 'investment';
+  type: 'bank' | 'wallet' | 'cash' | 'investment' | 'credit' | 'paylater' | 'asset';
+  creditLimit?: number;
+  dueDate?: number;
   provider?: string | null;
   color?: string;
   balance: number;
@@ -17,7 +19,7 @@ export interface Account {
 export interface Transaction {
   id: string;
   accountId: string;
-  type: 'income' | 'expense' | 'transfer';
+  type: 'income' | 'expense' | 'transfer' | 'payable' | 'receivable';
   amount: number;
   category: string;
   description: string;
@@ -237,8 +239,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const acc = accounts.find(a => a.id === tx.accountId);
     if (acc) {
       let newBalance = acc.balance;
-      if (tx.type === 'income') newBalance += tx.amount;
-      if (tx.type === 'expense') newBalance -= tx.amount;
+      if (tx.type === 'income' || tx.type === 'payable') newBalance += tx.amount;
+      if (tx.type === 'expense' || tx.type === 'receivable') newBalance -= tx.amount;
       
       const accRef = doc(db, 'accounts', acc.id);
       batch.update(accRef, { balance: newBalance });
@@ -261,8 +263,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const acc = accounts.find(a => a.id === tx.accountId);
     if (acc) {
       let newBalance = acc.balance;
-      if (tx.type === 'income') newBalance -= tx.amount;
-      if (tx.type === 'expense') newBalance += tx.amount;
+      if (tx.type === 'income' || tx.type === 'payable') newBalance -= tx.amount;
+      if (tx.type === 'expense' || tx.type === 'receivable') newBalance += tx.amount;
       
       batch.update(doc(db, 'accounts', acc.id), { balance: newBalance });
     }
