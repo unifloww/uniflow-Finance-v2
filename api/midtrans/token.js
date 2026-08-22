@@ -35,7 +35,8 @@ export default async function handler(req, res) {
     
     // Buat transaksi
     const transaction = await snap.createTransaction(parameter);
-    res.status(200).json({ token: transaction.token, redirect_url: transaction.redirect_url });
+    const isSandbox = serverKey.includes("SB-");
+    res.status(200).json({ token: transaction.token, redirect_url: transaction.redirect_url, isSandbox });
   } catch (error) {
     console.error("Midtrans Vercel API Error:", error);
     res.status(500).json({ error: error.message });

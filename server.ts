@@ -44,7 +44,7 @@ async function startServer() {
       };
 
       const transaction = await snap.createTransaction(parameter);
-      res.json({ token: transaction.token, redirect_url: transaction.redirect_url });
+      res.json({ token: transaction.token, redirect_url: transaction.redirect_url, isSandbox: !isProduction });
     } catch (error: any) {
       console.error("Midtrans Error:", error);
       res.status(500).json({ error: error.message });
