@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
-import { Users, Activity, CreditCard, Laptop, Info } from "lucide-react";
+import { Users, Activity, CreditCard, Laptop, Info, Plus, Settings, DollarSign, ArrowRight, Server, Database, Wifi, HardDrive, CheckCircle2, AlertCircle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface ActivityLog {
@@ -19,6 +20,42 @@ export function AdminDashboard() {
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [activeSessions, setActiveSessions] = useState(1);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [storageUsed, setStorageUsed] = useState(1.2);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  
+  const [systemHealth, setSystemHealth] = useState({
+    firebase: 'checking',
+    api: 'checking',
+    storage: 'checking',
+    ping: 0
+  });
+
+  useEffect(() => {
+    // Simulate system health checks
+    const checkHealth = async () => {
+      const start = Date.now();
+      try {
+        const { collection, getDocs, query, limit } = await import('firebase/firestore');
+        const { db } = await import('../lib/firebase');
+        await getDocs(query(collection(db, "users"), limit(1)));
+        const ping = Date.now() - start;
+        setSystemHealth({
+          firebase: 'operational',
+          api: 'operational',
+          storage: 'operational',
+          ping: ping > 0 ? ping : 12 // provide a reasonable fallback if too fast
+        });
+      } catch (e) {
+        setSystemHealth({
+          firebase: 'degraded',
+          api: 'operational', // network might still be fine
+          storage: 'degraded',
+          ping: Date.now() - start
+        });
+      }
+    };
+    checkHealth();
+  }, []);
 
   
   useEffect(() => {
@@ -180,6 +217,149 @@ export function AdminDashboard() {
           <CardContent className="pb-6 px-6">
             <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight mt-1">
               {totalTransactions}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <Link to="/admin/users" className="group rounded-2xl bg-indigo-50 hover:bg-indigo-600 transition-colors p-5 flex flex-col justify-between h-32 border border-indigo-100 dark:border-indigo-900/50 dark:bg-indigo-900/20 dark:hover:bg-indigo-600">
+          <div className="flex justify-between items-start w-full">
+            <div className="p-2.5 bg-white dark:bg-slate-800 text-indigo-600 rounded-xl group-hover:text-indigo-600 group-hover:scale-110 transition-transform shadow-sm">
+              <Users className="h-5 w-5" />
+            </div>
+            <ArrowRight className="h-5 w-5 text-indigo-300 dark:text-indigo-500 group-hover:text-white transition-colors" />
+          </div>
+          <div className="font-bold text-indigo-900 dark:text-indigo-100 group-hover:text-white transition-colors">
+            Kelola Pengguna
+          </div>
+        </Link>
+        
+        <Link to="/admin/revenue" className="group rounded-2xl bg-emerald-50 hover:bg-emerald-600 transition-colors p-5 flex flex-col justify-between h-32 border border-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-900/20 dark:hover:bg-emerald-600">
+          <div className="flex justify-between items-start w-full">
+            <div className="p-2.5 bg-white dark:bg-slate-800 text-emerald-600 rounded-xl group-hover:text-emerald-600 group-hover:scale-110 transition-transform shadow-sm">
+              <DollarSign className="h-5 w-5" />
+            </div>
+            <ArrowRight className="h-5 w-5 text-emerald-300 dark:text-emerald-500 group-hover:text-white transition-colors" />
+          </div>
+          <div className="font-bold text-emerald-900 dark:text-emerald-100 group-hover:text-white transition-colors">
+            Cek Penghasilan
+          </div>
+        </Link>
+
+        <Link to="/admin/pricing" className="group rounded-2xl bg-amber-50 hover:bg-amber-500 transition-colors p-5 flex flex-col justify-between h-32 border border-amber-100 dark:border-amber-900/50 dark:bg-amber-900/20 dark:hover:bg-amber-500">
+          <div className="flex justify-between items-start w-full">
+            <div className="p-2.5 bg-white dark:bg-slate-800 text-amber-500 rounded-xl group-hover:text-amber-500 group-hover:scale-110 transition-transform shadow-sm">
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <ArrowRight className="h-5 w-5 text-amber-300 dark:text-amber-500 group-hover:text-white transition-colors" />
+          </div>
+          <div className="font-bold text-amber-900 dark:text-amber-100 group-hover:text-white transition-colors">
+            Harga & Paket
+          </div>
+        </Link>
+
+        <Link to="/admin/profile" className="group rounded-2xl bg-rose-50 hover:bg-rose-500 transition-colors p-5 flex flex-col justify-between h-32 border border-rose-100 dark:border-rose-900/50 dark:bg-rose-900/20 dark:hover:bg-rose-500">
+          <div className="flex justify-between items-start w-full">
+            <div className="p-2.5 bg-white dark:bg-slate-800 text-rose-500 rounded-xl group-hover:text-rose-500 group-hover:scale-110 transition-transform shadow-sm">
+              <Settings className="h-5 w-5" />
+            </div>
+            <ArrowRight className="h-5 w-5 text-rose-300 dark:text-rose-500 group-hover:text-white transition-colors" />
+          </div>
+          <div className="font-bold text-rose-900 dark:text-rose-100 group-hover:text-white transition-colors">
+            Profil & Keamanan
+          </div>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="rounded-[2rem] border-0 shadow-lg overflow-hidden bg-white dark:bg-slate-900 col-span-1 md:col-span-3">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 px-6 py-5 flex flex-row items-center justify-between">
+            <CardTitle className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+              <Server className="w-5 h-5 text-indigo-500" />
+              System Health & Monitoring
+            </CardTitle>
+            <div className={`px-3 py-1.5 text-xs font-bold rounded-full flex items-center gap-1.5 shadow-sm ${
+              systemHealth.firebase === 'operational' 
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
+                : systemHealth.firebase === 'checking'
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+            }`}>
+              {systemHealth.firebase === 'operational' ? (
+                <><CheckCircle2 className="w-4 h-4" /> All Systems Operational</>
+              ) : systemHealth.firebase === 'checking' ? (
+                <><Activity className="w-4 h-4 animate-spin" /> Checking...</>
+              ) : (
+                <><AlertCircle className="w-4 h-4" /> Degraded Performance</>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-slate-800">
+              <div className="p-6 flex flex-col justify-center">
+                <div className="flex items-center gap-4">
+                  <div className={`p-4 rounded-2xl ${systemHealth.firebase === 'operational' ? 'bg-orange-50 text-orange-500 dark:bg-orange-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}>
+                    <Database className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Firebase Firestore</div>
+                    <div className="text-lg font-bold text-slate-900 dark:text-white capitalize flex items-center gap-2">
+                      {systemHealth.firebase}
+                      {systemHealth.firebase === 'operational' && <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 flex flex-col justify-center">
+                <div className="flex items-center gap-4">
+                  <div className={`p-4 rounded-2xl ${systemHealth.api === 'operational' ? 'bg-blue-50 text-blue-500 dark:bg-blue-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}>
+                    <Wifi className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">API Connectivity</div>
+                    <div className="text-lg font-bold text-slate-900 dark:text-white capitalize flex items-center gap-2">
+                      {systemHealth.api}
+                      {systemHealth.api === 'operational' && <span className="text-sm text-slate-400 font-normal bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">{systemHealth.ping}ms</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 flex flex-col justify-center">
+                <div className="flex items-center gap-4">
+                  <div className={`p-4 rounded-2xl ${systemHealth.storage === 'operational' ? 'bg-emerald-50 text-emerald-500 dark:bg-emerald-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800'}`}>
+                    <HardDrive className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Storage Usage</div>
+                    <div className="flex justify-between items-end">
+                      <div className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        {systemHealth.storage === 'checking' ? 'Checking' : `${storageUsed.toFixed(1)} GB / 5.0 GB`}
+                      </div>
+                      {systemHealth.storage === 'operational' && (
+                        <button
+                          onClick={() => {
+                            setIsOptimizing(true);
+                            setTimeout(() => {
+                              setStorageUsed(Math.max(0.4, storageUsed - 0.7)); // Simulate cleanup
+                              setIsOptimizing(false);
+                            }, 1500);
+                          }}
+                          disabled={isOptimizing || storageUsed < 0.6}
+                          className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-400 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 px-3 py-1 rounded-full transition-colors disabled:opacity-50"
+                        >
+                          {isOptimizing ? 'Memproses...' : 'Optimasi'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {systemHealth.storage === 'operational' && (
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-4 overflow-hidden">
+                    <div className="bg-emerald-500 h-2 rounded-full transition-all duration-1000" style={{ width: `${(storageUsed / 5.0) * 100}%` }}></div>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>

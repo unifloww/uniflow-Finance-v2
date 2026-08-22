@@ -51,6 +51,7 @@ export function AdminLayout() {
     { name: "Harga & Paket", path: "/admin/pricing", icon: CreditCard },
     { name: "Penghasilan", path: "/admin/revenue", icon: DollarSign },
     { name: "Pembayaran", path: "/admin/upgrades", icon: CreditCard },
+    { name: "Profil Admin", path: "/admin/profile", icon: User },
   ];
 
   const renderSyncIndicator = (isMobile = false) => {

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, X, Send, Bot, User, Sparkles, Headset } from 'lucide-react';
+import { MessageSquare, X, Send, User, Sparkles, Headset } from 'lucide-react';
+import { FiaAvatar } from './FiaAvatar';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency } from '../lib/utils';
@@ -8,7 +9,7 @@ import { formatCurrency } from '../lib/utils';
 export function AIAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string }[]>([
-    { role: 'ai', content: 'Halo! Saya asisten keuangan pribadi Anda. Ada yang bisa saya bantu hari ini terkait perencanaan, analisis pengeluaran, atau tips berhemat?' }
+    { role: 'ai', content: 'Halo! Saya FIA, asisten keuangan cerdas Anda. Ada yang bisa saya bantu hari ini terkait perencanaan, analisis pengeluaran, atau tips berhemat?' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -89,7 +90,7 @@ ${activeGoals || 'Belum ada tujuan.'}
             className="fixed bottom-24 right-4 lg:bottom-8 lg:right-28 h-16 w-16 bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-500 hover:via-purple-500 hover:to-pink-400 text-white rounded-full shadow-[0_0_30px_rgba(168,85,247,0.5)] flex items-center justify-center z-50 transition-shadow border-2 border-white dark:border-slate-800 cursor-pointer group"
             style={{ touchAction: 'none' }}
           >
-            <div className="relative flex items-center justify-center w-full h-full"><Headset className="h-7 w-7 relative z-10 group-hover:-translate-y-0.5 transition-transform" /><Sparkles className="h-4 w-4 absolute top-2 right-2 text-pink-200 animate-pulse" /><div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div></div>
+            <div className="relative flex items-center justify-center w-full h-full"><FiaAvatar className="h-8 w-8 relative z-10 group-hover:-translate-y-0.5 transition-transform" /><Sparkles className="h-4 w-4 absolute top-2 right-2 text-pink-200 animate-pulse" /><div className="absolute inset-0 rounded-full bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div></div>
           </motion.button>
         )}
       </AnimatePresence>
@@ -106,11 +107,11 @@ ${activeGoals || 'Belum ada tujuan.'}
             <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
-                  <Headset className="h-6 w-6 text-white" />
+                  <FiaAvatar className="h-8 w-8" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-lg leading-tight">UniFlow AI</h3>
-                  <p className="text-indigo-100 text-xs">Penasihat Keuangan Pintar</p>
+                  <h3 className="font-bold text-white text-lg leading-tight">FIA</h3>
+                  <p className="text-indigo-100 text-xs">Finance Intelligence Assistant</p>
                 </div>
               </div>
               <button 
@@ -126,7 +127,7 @@ ${activeGoals || 'Belum ada tujuan.'}
               {messages.map((msg, i) => (
                 <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-indigo-600'}`}>
-                    {msg.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                    {msg.role === 'user' ? <User className="h-4 w-4" /> : <FiaAvatar className="h-5 w-5" />}
                   </div>
                   <div className={`px-4 py-3 rounded-2xl max-w-[75%] ${msg.role === 'user' ? 'bg-[#059669] text-white rounded-tr-sm' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-700 rounded-tl-sm'}`}>
                     <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
@@ -136,7 +137,7 @@ ${activeGoals || 'Belum ada tujuan.'}
               {isLoading && (
                 <div className="flex gap-3 flex-row">
                   <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-                    <Bot className="h-4 w-4" />
+                    <FiaAvatar className="h-5 w-5" />
                   </div>
                   <div className="px-4 py-3 rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 rounded-tl-sm flex items-center gap-2">
                     <div className="h-2 w-2 bg-indigo-400 rounded-full animate-bounce" />

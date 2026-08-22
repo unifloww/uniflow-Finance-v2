@@ -10,7 +10,7 @@ import {
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { formatCurrency } from "../lib/utils";
-import { Wallet, Plus, CreditCard, Landmark, Banknote, X, Edit2, Trash2, Eye, EyeOff } from "lucide-react";
+import { Wallet, Plus, CreditCard, Landmark, Banknote, X, Edit2, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, TrendingUp, Home, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 const PROVIDERS = [
@@ -49,6 +49,8 @@ export function Accounts() {
   const { accounts, addAccount, editAccount, deleteAccount, hideBalances, toggleHideBalances } = useData();
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const toggleGroup = (key: string) => setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
   const [editingId, setEditingId] = useState<string | null>(null);
   
   const [name, setName] = useState("");
@@ -98,8 +100,8 @@ export function Accounts() {
         provider: provider !== "other" ? provider : null,
         balance: parseFloat(balance),
         color,
-        creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
-        dueDate: dueDate ? parseInt(dueDate) : undefined,
+        creditLimit: creditLimit ? parseFloat(creditLimit) : null,
+        dueDate: dueDate ? parseInt(dueDate) : null,
       });
     } else {
       addAccount({
@@ -108,8 +110,8 @@ export function Accounts() {
         provider: provider !== "other" ? provider : null,
         balance: parseFloat(balance),
         color,
-        creditLimit: creditLimit ? parseFloat(creditLimit) : undefined,
-        dueDate: dueDate ? parseInt(dueDate) : undefined,
+        creditLimit: creditLimit ? parseFloat(creditLimit) : null,
+        dueDate: dueDate ? parseInt(dueDate) : null,
       });
     }
 
@@ -117,6 +119,163 @@ export function Accounts() {
   };
 
   const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+
+  const bankAccounts = accounts.filter(a => a.type === 'bank');
+  const walletAccounts = accounts.filter(a => a.type === 'wallet');
+  const cashAccounts = accounts.filter(a => a.type === 'cash');
+  const investmentAccounts = accounts.filter(a => a.type === 'investment');
+  const assetAccounts = accounts.filter(a => a.type === 'asset');
+  const creditAccounts = accounts.filter(a => a.type === 'credit');
+  const paylaterAccounts = accounts.filter(a => a.type === 'paylater');
+
+  const renderAccountCard = (acc: Account, i: number) => {
+    const providerInfo = PROVIDERS.find(p => p.id === acc.provider);
+    return (
+      <motion.div key={acc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="md:col-span-1 sm:col-span-2">
+        <Card
+          className="rounded-[2rem] border-0 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 h-full relative group overflow-hidden"
+          style={{
+            background: acc.color 
+              ? `linear-gradient(135deg, ${acc.color}dd, ${acc.color})` 
+              : 'linear-gradient(135deg, #059669dd, #046a4e)',
+            color: 'white'
+          }}
+        >
+          {/* Decorative circles */}
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-black/10 rounded-full blur-xl pointer-events-none" />
+          
+          {confirmDeleteId === acc.id && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md px-4">
+              <p className="text-sm font-bold text-white text-center mb-4">Hapus akun ini?</p>
+              <div className="flex gap-2 w-full justify-center">
+                <Button size="sm" variant="outline" className="rounded-xl border-white/20 text-slate-800 hover:text-slate-900 bg-white" onClick={() => setConfirmDeleteId(null)}>Batal</Button>
+                <Button size="sm" className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white border-0" onClick={() => { deleteAccount(acc.id); setConfirmDeleteId(null); }}>Hapus</Button>
+              </div>
+            </div>
+          )}
+          <div className="absolute top-4 right-4 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-white hover:text-emerald-100 hover:bg-black/20 rounded-full bg-black/10 backdrop-blur-sm shadow-sm border border-white/10"
+              onClick={() => handleEditClick(acc)}
+            >
+              <Edit2 className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-white hover:text-rose-200 hover:bg-black/20 rounded-full bg-black/10 backdrop-blur-sm shadow-sm border border-white/10"
+              onClick={() => setConfirmDeleteId(acc.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-6">
+            {providerInfo?.logo ? (
+                <div className="h-8 w-16 bg-white/20 backdrop-blur-sm rounded-lg p-1.5 flex items-center justify-center border border-white/30 shadow-sm">
+                  <img src={providerInfo.logo} alt={providerInfo.name} className="max-h-full max-w-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; if(e.currentTarget.parentElement) { e.currentTarget.parentElement.innerHTML = '<span class="text-xs font-bold text-slate-500 dark:text-slate-400">' + providerInfo.name.substring(0,3).toUpperCase() + '</span>' } }} />
+                </div>
+            ) : (
+              <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm bg-white/20 backdrop-blur-sm border border-white/30">
+                {acc.type === "bank" ? (
+                  <Landmark className="h-5 w-5" />
+                ) : acc.type === "wallet" ? (
+                  <CreditCard className="h-5 w-5" />
+                ) : (
+                  <Banknote className="h-5 w-5" />
+                )}
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="pt-4 pb-6">
+            <CardTitle className="text-base font-bold text-white line-clamp-1 mb-1 pr-10 drop-shadow-sm">
+              {acc.name}
+            </CardTitle>
+            <p className="text-[10px] font-bold text-white/70 uppercase tracking-wide mb-3">
+              {acc.type === 'credit' ? 'KARTU KREDIT' : acc.type === 'paylater' ? 'PAYLATER' : acc.type === 'asset' ? 'ASET' : acc.type === 'investment' ? 'INVESTASI' : acc.type}
+            </p>
+            {["credit", "paylater"].includes(acc.type) ? (
+              <div className="space-y-1">
+                <div className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
+                  {hideBalances ? "Rp •••••••" : formatCurrency(Math.abs(acc.balance))}
+                  <span className="text-sm font-normal opacity-80 ml-1 text-rose-200">Tagihan</span>
+                </div>
+                {acc.creditLimit && (
+                  <div className="text-xs font-medium text-white/80">
+                    Sisa Limit: {hideBalances ? "••••" : formatCurrency(acc.creditLimit - Math.abs(acc.balance))}
+                  </div>
+                )}
+                {acc.dueDate && (
+                  <div className="text-xs font-medium text-white/80 bg-white/20 inline-block px-2 py-0.5 rounded-full mt-1">
+                    Jatuh Tempo: Tgl {acc.dueDate}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
+                {hideBalances ? "Rp •••••••" : formatCurrency(acc.balance)}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  const renderGroup = (key: string, title: string, icon: React.ReactNode, accountList: Account[]) => {
+    if (accountList.length === 0) return null;
+    const isExpanded = !!expandedGroups[key];
+    const groupBalance = accountList.reduce((sum, acc) => sum + (["credit", "paylater"].includes(acc.type) ? -Math.abs(acc.balance) : acc.balance), 0);
+    
+    return (
+      <div key={key} className="md:col-span-4 mt-2">
+        <Card 
+          className="rounded-[1.5rem] border-0 shadow-md cursor-pointer hover:shadow-lg transition-all mb-4 bg-white dark:bg-slate-900 overflow-hidden"
+          onClick={() => toggleGroup(key)}
+        >
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700">
+                {icon}
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{accountList.length} Akun</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Total Saldo</p>
+                <p className={`font-black tracking-tight ${groupBalance < 0 ? 'text-rose-500 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>
+                  {hideBalances ? "Rp •••••••" : formatCurrency(Math.abs(groupBalance))}
+                </p>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 transition-transform">
+                {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }} 
+              animate={{ height: "auto", opacity: 1 }} 
+              exit={{ height: 0, opacity: 0 }} 
+              className="overflow-hidden"
+            >
+              <div className="grid gap-6 md:grid-cols-4 pt-2 pb-6">
+                {accountList.map((acc, i) => renderAccountCard(acc, i))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -388,102 +547,13 @@ export function Accounts() {
         document.body
         )}
 
-        {accounts.map((acc, i) => {
-          const providerInfo = PROVIDERS.find(p => p.id === acc.provider);
-
-          return (
-            <motion.div key={acc.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="md:col-span-1 sm:col-span-2">
-              <Card
-                className="rounded-[2rem] border-0 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 h-full relative group overflow-hidden"
-                style={{
-                  background: acc.color 
-                    ? `linear-gradient(135deg, ${acc.color}dd, ${acc.color})` 
-                    : 'linear-gradient(135deg, #059669dd, #046a4e)',
-                  color: 'white'
-                }}
-              >
-                {/* Decorative circles */}
-                <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-                <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-black/10 rounded-full blur-xl pointer-events-none" />
-                
-                {confirmDeleteId === acc.id && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md px-4">
-                    <p className="text-sm font-bold text-white text-center mb-4">Hapus akun ini?</p>
-                    <div className="flex gap-2 w-full justify-center">
-                      <Button size="sm" variant="outline" className="rounded-xl border-white/20 text-slate-800 hover:text-slate-900 bg-white" onClick={() => setConfirmDeleteId(null)}>Batal</Button>
-                      <Button size="sm" className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white border-0" onClick={() => { deleteAccount(acc.id); setConfirmDeleteId(null); }}>Hapus</Button>
-                    </div>
-                  </div>
-                )}
-                <div className="absolute top-4 right-4 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-white hover:text-emerald-100 hover:bg-black/20 rounded-full bg-black/10 backdrop-blur-sm shadow-sm border border-white/10"
-                    onClick={() => handleEditClick(acc)}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 text-white hover:text-rose-200 hover:bg-black/20 rounded-full bg-black/10 backdrop-blur-sm shadow-sm border border-white/10"
-                    onClick={() => setConfirmDeleteId(acc.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-<CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 pt-6">
-                  {providerInfo?.logo ? (
-                     <div className="h-8 w-16 bg-white/20 backdrop-blur-sm rounded-lg p-1.5 flex items-center justify-center border border-white/30 shadow-sm">
-                       <img src={providerInfo.logo} alt={providerInfo.name} className="max-h-full max-w-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; if(e.currentTarget.parentElement) { e.currentTarget.parentElement.innerHTML = '<span class="text-xs font-bold text-slate-500 dark:text-slate-400">' + providerInfo.name.substring(0,3).toUpperCase() + '</span>' } }} />
-                     </div>
-                  ) : (
-                    <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm bg-white/20 backdrop-blur-sm border border-white/30">
-                      {acc.type === "bank" ? (
-                        <Landmark className="h-5 w-5" />
-                      ) : acc.type === "wallet" ? (
-                        <CreditCard className="h-5 w-5" />
-                      ) : (
-                        <Banknote className="h-5 w-5" />
-                      )}
-                    </div>
-                  )}
-                </CardHeader>
-                <CardContent className="pt-4 pb-6">
-                  <CardTitle className="text-base font-bold text-white line-clamp-1 mb-1 pr-10 drop-shadow-sm">
-                    {acc.name}
-                  </CardTitle>
-                  <p className="text-[10px] font-bold text-white/70 uppercase tracking-wide mb-3">
-                    {acc.type === 'credit' ? 'KARTU KREDIT' : acc.type === 'paylater' ? 'PAYLATER' : acc.type === 'asset' ? 'ASET' : acc.type === 'investment' ? 'INVESTASI' : acc.type}
-                  </p>
-                  {["credit", "paylater"].includes(acc.type) ? (
-                    <div className="space-y-1">
-                      <div className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
-                        {hideBalances ? "Rp •••••••" : formatCurrency(Math.abs(acc.balance))}
-                        <span className="text-sm font-normal opacity-80 ml-1 text-rose-200">Tagihan</span>
-                      </div>
-                      {acc.creditLimit && (
-                        <div className="text-xs font-medium text-white/80">
-                          Sisa Limit: {hideBalances ? "••••" : formatCurrency(acc.creditLimit - Math.abs(acc.balance))}
-                        </div>
-                      )}
-                      {acc.dueDate && (
-                        <div className="text-xs font-medium text-white/80 bg-white/20 inline-block px-2 py-0.5 rounded-full mt-1">
-                          Jatuh Tempo: Tgl {acc.dueDate}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-xl sm:text-2xl font-black text-white tracking-tight drop-shadow-md">
-                      {hideBalances ? "Rp •••••••" : formatCurrency(acc.balance)}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
-        })}
+        {renderGroup('bank', 'Rekening Bank', <Landmark className="w-6 h-6 text-blue-500" />, bankAccounts)}
+        {renderGroup('wallet', 'E-Wallet', <Wallet className="w-6 h-6 text-purple-500" />, walletAccounts)}
+        {renderGroup('cash', 'Uang Tunai', <Banknote className="w-6 h-6 text-emerald-500" />, cashAccounts)}
+        {renderGroup('investment', 'Investasi', <TrendingUp className="w-6 h-6 text-indigo-500" />, investmentAccounts)}
+        {renderGroup('asset', 'Aset Berharga', <Home className="w-6 h-6 text-amber-500" />, assetAccounts)}
+        {renderGroup('credit', 'Kartu Kredit', <CreditCard className="w-6 h-6 text-rose-500" />, creditAccounts)}
+        {renderGroup('paylater', 'Paylater', <Clock className="w-6 h-6 text-orange-500" />, paylaterAccounts)}
       </div>
     </div>
   );

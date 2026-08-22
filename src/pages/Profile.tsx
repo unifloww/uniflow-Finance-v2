@@ -5,11 +5,13 @@ import { useData } from "../contexts/DataContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
-import { User, Phone, Mail, ShieldCheck, CheckCircle2, Crown, Star, ArrowRight, Check, DollarSign, Clock, Eye, EyeOff, Upload, X, LogOut, Briefcase } from "lucide-react";
+import { User, Phone, Mail, ShieldCheck, CheckCircle2, Crown, Star, ArrowRight, Check, DollarSign, Clock, Eye, EyeOff, Upload, X, LogOut, Briefcase, Copy } from "lucide-react";
 import { motion } from "motion/react";
 import { isWebAuthnSupported, registerBiometric } from "../lib/webauthn";
 import { Fingerprint } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+
+// Note: Ensure midtrans snap script is loaded or we load it dynamically
 
 export function Profile() {
   const { userProfile, updateProfile, currentUser, logout } = useAuth();
@@ -37,6 +39,9 @@ export function Profile() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  
+  const [copiedAccount, setCopiedAccount] = useState(false);
+  const [isProcessingMidtrans, setIsProcessingMidtrans] = useState(false);
 
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(!!localStorage.getItem("saved_biometric_pass"));
@@ -290,6 +295,76 @@ export function Profile() {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleCopyAccount = () => {
+    navigator.clipboard.writeText("9010008499594218352");
+    setCopiedAccount(true);
+    setTimeout(() => setCopiedAccount(false), 2000);
+  };
+
+  const handleMidtransPayment = async () => {
+    if (!selectedPlan || !currentUser) return;
+    setIsProcessingMidtrans(true);
+    try {
+      const response = await fetch("/api/midtrans/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderId: `UPGRADE-${currentUser.uid}-${Date.now()}`,
+          grossAmount: selectedPlan.price,
+          customerName: userProfile?.name || "User",
+          customerEmail: userProfile?.email || currentUser.email || "user@example.com"
+        })
+      });
+      const data = await response.json();
+      
+      if (!data.token) {
+        throw new Error("Gagal mengambil token pembayaran");
+      }
+
+      // Ensure snap is available (we need to inject the script if not present)
+      const loadSnapScript = () => {
+        return new Promise((resolve) => {
+          if ((window as any).snap) {
+            resolve(true);
+            return;
+          }
+          const script = document.createElement('script');
+          script.src = "https://app.midtrans.com/snap/snap.js";
+          script.setAttribute('data-client-key', import.meta.env.VITE_MIDTRANS_CLIENT_KEY || "");
+          script.onload = () => resolve(true);
+          document.body.appendChild(script);
+        });
+      };
+
+      await loadSnapScript();
+
+      (window as any).snap.pay(data.token, {
+        onSuccess: async function(result: any) {
+          console.log("Midtrans payment success:", result);
+          await updateProfile({ plan: selectedPlan.planId });
+          setPaymentModalOpen(false);
+          alert("Pembayaran berhasil! Akun Anda telah di-upgrade.");
+        },
+        onPending: function(result: any) {
+          console.log("Midtrans payment pending:", result);
+          alert("Pembayaran tertunda. Harap selesaikan pembayaran Anda.");
+        },
+        onError: function(result: any) {
+          console.log("Midtrans payment error:", result);
+          alert("Pembayaran gagal. Silakan coba lagi.");
+        },
+        onClose: function() {
+          console.log('Customer closed the popup without finishing the payment');
+          setIsProcessingMidtrans(false);
+        }
+      });
+    } catch (error) {
+      console.error(error);
+      alert("Terjadi kesalahan saat memproses pembayaran otomatis.");
+      setIsProcessingMidtrans(false);
+    }
   };
 
   const submitManualPayment = async () => {
@@ -713,7 +788,16 @@ export function Profile() {
                  <div className="space-y-1">
                     <p className="font-bold text-slate-800 dark:text-slate-200">BANK NEO COMMERCE</p>
                     <p className="text-sm text-slate-600 dark:text-slate-400">PT LIFIE KARYA NUSANTARA</p>
-                    <p className="text-lg font-black text-[#059669] mt-2 tracking-widest">9010 0084 9959 4218 352</p>
+                    <div className="flex items-center justify-between bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 mt-2">
+                      <p className="text-lg font-black text-[#059669] tracking-widest">9010 0084 9959 4218 352</p>
+                      <button 
+                        onClick={handleCopyAccount}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-lg font-semibold text-sm hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors"
+                      >
+                        {copiedAccount ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        {copiedAccount ? "Disalin!" : "Salin"}
+                      </button>
+                    </div>
                  </div>
                  <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-800/50 flex justify-between items-center">
                     <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">Total Tagihan:</span>
@@ -722,6 +806,22 @@ export function Profile() {
               </div>
               
               <div className="mb-6">
+                 <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Pilih Metode Pembayaran</p>
+                 
+                 <Button 
+                   onClick={handleMidtransPayment} 
+                   disabled={isProcessingMidtrans}
+                   className="w-full py-6 rounded-xl font-bold bg-[#0891b2] hover:bg-cyan-600 text-white shadow-lg text-lg mb-4"
+                 >
+                   {isProcessingMidtrans ? "Memproses..." : "Bayar Otomatis (Instan)"}
+                 </Button>
+
+                 <div className="relative flex py-2 items-center mb-4">
+                    <div className="flex-grow border-t border-slate-300 dark:border-slate-700"></div>
+                    <span className="flex-shrink-0 mx-4 text-slate-400 text-sm">Atau manual transfer</span>
+                    <div className="flex-grow border-t border-slate-300 dark:border-slate-700"></div>
+                 </div>
+
                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Unggah Bukti Transfer</p>
                  {!proofImage ? (
                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">

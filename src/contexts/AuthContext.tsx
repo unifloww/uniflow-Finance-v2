@@ -5,7 +5,7 @@ import {
   signOut, 
   User as FirebaseUser
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 
 export interface UserProfile {
   id: string;
@@ -15,7 +15,8 @@ export interface UserProfile {
   businessName?: string;
   businessAddress?: string;
   photoURL?: string;
-  role: 'user' | 'superadmin';
+  role: 'user' | 'admin' | 'superadmin';
+  permissions?: string[];
   status: 'active' | 'suspended' | 'pending';
   plan?: 'trial' | 'pro' | 'lifetime';
   planName?: string;
@@ -50,12 +51,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (docSnap.exists()) {
           setUserProfile(docSnap.data() as UserProfile);
         } else {
+          // Check if there is a pending invitation for this email
+          let assignedRole: 'user' | 'admin' | 'superadmin' = 'user';
+          try {
+            if (user.email) {
+              const invQuery = query(collection(db, 'invitations'), where('email', '==', user.email), where('status', '==', 'pending'));
+              const invSnap = await getDocs(invQuery);
+              if (!invSnap.empty) {
+                const invitation = invSnap.docs[0];
+                assignedRole = invitation.data().role as 'user' | 'admin' | 'superadmin';
+                // Optional: mark invitation as used, though we might not have permission, so it's best left or handled via admin function.
+                try {
+                   await updateDoc(doc(db, 'invitations', invitation.id), { status: 'accepted' });
+                } catch(e) {}
+              }
+            }
+          } catch(e) {
+            console.error("Error checking invitations", e);
+          }
+
           // If profile doesn't exist, create a default one
           const newProfile: UserProfile = {
             id: user.uid,
             email: user.email || '',
             name: user.displayName || 'User',
-            role: 'user',
+            role: assignedRole,
             status: 'active',
             plan: 'trial',
             createdAt: new Date().toISOString()

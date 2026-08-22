@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Activity } from "lucide-react";
 import { useData } from "../contexts/DataContext";
 import { useAuth } from "../contexts/AuthContext";
+import { GaugeMeter } from "../components/GaugeMeter";
 import {
   Card,
   CardContent,
@@ -32,7 +33,7 @@ export function Analytics() {
   const { userProfile } = useAuth();
   const [reportPeriod, setReportPeriod] = useState<"this_month" | "last_month" | "this_year" | "all_time">("this_month");
 
-  const { expensesByCategory, incomeVsExpense, history12Months, history6Months } = useMemo(() => {
+  const { expensesByCategory, incomeVsExpense, history12Months, history6Months, healthScore, savingsRate, debtToIncomeRatio } = useMemo(() => {
     const categoryMap: Record<string, number> = {};
     let totalIncome = 0;
     let totalExpense = 0;
@@ -84,8 +85,33 @@ export function Analytics() {
     const history12Months = Array.from(historyMap.values());
     const history6Months = history12Months.slice(-6);
 
-    return { expensesByCategory, incomeVsExpense, history12Months, history6Months };
-  }, [transactions]);
+    // Calculate Financial Health Score
+    let totalDebt = 0;
+    accounts.forEach(acc => {
+      if (acc.type === 'credit' || acc.type === 'paylater') {
+         totalDebt += acc.balance;
+      }
+    });
+
+    const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpense) / totalIncome) * 100 : 0;
+    const debtToIncomeRatio = totalIncome > 0 ? (totalDebt / totalIncome) * 100 : (totalDebt > 0 ? 100 : 0);
+
+    let savingsScore = 0;
+    if (savingsRate >= 20) savingsScore = 50;
+    else if (savingsRate >= 10) savingsScore = 40;
+    else if (savingsRate > 0) savingsScore = 30;
+    else savingsScore = 0;
+
+    let debtScore = 0;
+    if (debtToIncomeRatio === 0) debtScore = 50;
+    else if (debtToIncomeRatio <= 20) debtScore = 40;
+    else if (debtToIncomeRatio <= 40) debtScore = 30;
+    else debtScore = 0;
+
+    const healthScore = Math.max(0, Math.min(100, savingsScore + debtScore));
+
+    return { expensesByCategory, incomeVsExpense, history12Months, history6Months, healthScore, savingsRate, debtToIncomeRatio };
+  }, [transactions, accounts]);
 
   const COLORS = [
     "#0f766e",
@@ -487,6 +513,44 @@ export function Analytics() {
           </CardContent>
         </Card>
       )}
+
+      <div className="grid gap-6 md:grid-cols-3 mb-6">
+        <Card className="rounded-3xl border-0 shadow-md overflow-hidden bg-white dark:bg-slate-900 col-span-1 md:col-span-3 lg:col-span-3">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div className="flex items-center gap-2">
+               <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                 <Activity className="w-4 h-4 text-emerald-600" />
+               </div>
+               <CardTitle>Skor Kesehatan Keuangan (Financial Health Score)</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col md:flex-row items-center justify-center pt-6 gap-8">
+            <div className="w-full md:w-1/2 lg:w-1/3 flex justify-center">
+              <GaugeMeter score={healthScore} />
+            </div>
+            <div className="w-full md:w-1/2 flex flex-col gap-6">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl flex justify-between items-center border border-slate-100 dark:border-slate-700/50">
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Savings Rate</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Porsi pendapatan yang ditabung</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{savingsRate.toFixed(1)}%</p>
+                </div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl flex justify-between items-center border border-slate-100 dark:border-slate-700/50">
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Debt-to-Income Ratio</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Rasio hutang terhadap pendapatan</p>
+                </div>
+                <div className="text-right">
+                  <p className={`text-2xl font-black ${debtToIncomeRatio > 40 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{debtToIncomeRatio.toFixed(1)}%</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="rounded-3xl border-0 shadow-md overflow-hidden bg-white dark:bg-slate-900">

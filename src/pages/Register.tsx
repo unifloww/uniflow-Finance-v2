@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -12,21 +12,46 @@ import {
 import { Eye, EyeOff } from "lucide-react";
 import { motion } from "motion/react";
 
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 import { getDoc } from "firebase/firestore";
 
 import { auth, db } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 
 export function Register() {
+  const [searchParams] = useSearchParams();
+  const emailParam = searchParams.get('email');
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(emailParam || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Handle Email Link Sign-In for Admin Invites
+    if (isSignInWithEmailLink(auth, window.location.href)) {
+      let emailForSignIn = emailParam;
+      if (!emailForSignIn) {
+        emailForSignIn = window.prompt("Tolong masukkan email Anda untuk konfirmasi.");
+      }
+      if (emailForSignIn) {
+        setLoading(true);
+        signInWithEmailLink(auth, emailForSignIn, window.location.href)
+          .then((result) => {
+            // Success, the AuthContext will handle the role upgrade based on invitations collection
+            navigate("/dashboard");
+          })
+          .catch((error) => {
+            console.error("Error signing in with email link", error);
+            setError("Gagal masuk dengan tautan undangan: " + error.message);
+            setLoading(false);
+          });
+      }
+    }
+  }, []);
 
   
   const handleGoogleLogin = async () => {

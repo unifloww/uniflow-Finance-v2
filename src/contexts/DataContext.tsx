@@ -7,8 +7,8 @@ export interface Account {
   id: string;
   name: string;
   type: 'bank' | 'wallet' | 'cash' | 'investment' | 'credit' | 'paylater' | 'asset';
-  creditLimit?: number;
-  dueDate?: number;
+  creditLimit?: number | null;
+  dueDate?: number | null;
   provider?: string | null;
   color?: string;
   balance: number;

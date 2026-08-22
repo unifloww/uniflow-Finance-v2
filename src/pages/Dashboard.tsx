@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import {  Link } from "react-router-dom";
 import {  useAuth } from "../contexts/AuthContext";
 import {  useData } from "../contexts/DataContext";
+import { GaugeMeter } from "../components/GaugeMeter";
 import { 
   Card,
   CardContent,
@@ -171,6 +172,27 @@ export function Dashboard() {
     return { income, expense, payable, receivable };
   }, [transactions]);
   
+  
+  const { healthScore, savingsRate, debtToIncomeRatio } = useMemo(() => {
+    const totalIncome = income;
+    const _savingsRate = totalIncome > 0 ? ((totalIncome - expense) / totalIncome) * 100 : 0;
+    const _debtToIncomeRatio = totalIncome > 0 ? (totalDebt / totalIncome) * 100 : (totalDebt > 0 ? 100 : 0);
+
+    let savingsScore = 0;
+    if (_savingsRate >= 20) savingsScore = 50;
+    else if (_savingsRate >= 10) savingsScore = 40;
+    else if (_savingsRate > 0) savingsScore = 30;
+    else savingsScore = 0;
+
+    let debtScore = 0;
+    if (_debtToIncomeRatio === 0) debtScore = 50;
+    else if (_debtToIncomeRatio <= 20) debtScore = 40;
+    else if (_debtToIncomeRatio <= 40) debtScore = 30;
+    else debtScore = 0;
+
+    return { healthScore: Math.max(0, Math.min(100, savingsScore + debtScore)), savingsRate: _savingsRate, debtToIncomeRatio: _debtToIncomeRatio };
+  }, [income, expense, totalDebt]);
+
   const netProfit = income - expense;
   // Calculate simple percentage based on income vs expense, or past vs current. For now, we can just show margin.
   const netProfitMargin = income > 0 ? (netProfit / income) * 100 : 0;
@@ -575,6 +597,44 @@ export function Dashboard() {
             )}
           </div>
         </div>
+      </motion.div>
+
+      <motion.div variants={itemVariants} className="mb-6">
+        <Card className="rounded-[2.2rem] border-0 shadow-lg shadow-slate-200/50 dark:shadow-none bg-white dark:bg-slate-900 overflow-hidden">
+          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div className="flex items-center gap-2">
+               <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                 <Activity className="w-4 h-4 text-emerald-600" />
+               </div>
+               <CardTitle className="text-lg font-black text-slate-900 dark:text-white">Skor Kesehatan Keuangan</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col md:flex-row items-center justify-center pt-6 gap-8">
+            <div className="w-full md:w-1/3 flex justify-center">
+              <GaugeMeter score={healthScore} />
+            </div>
+            <div className="w-full md:w-2/3 flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl flex flex-col justify-between border border-slate-100 dark:border-slate-700/50">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Savings Rate</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Porsi pendapatan yang ditabung</p>
+                </div>
+                <div className="mt-4">
+                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{savingsRate.toFixed(1)}%</p>
+                </div>
+              </div>
+              <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl flex flex-col justify-between border border-slate-100 dark:border-slate-700/50">
+                <div>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Debt-to-Income</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Rasio hutang terhadap pendapatan</p>
+                </div>
+                <div className="mt-4">
+                  <p className={`text-2xl font-black ${debtToIncomeRatio > 40 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{debtToIncomeRatio.toFixed(1)}%</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Grid for Recent Transactions and Accounts/Budget */}

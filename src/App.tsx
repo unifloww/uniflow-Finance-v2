@@ -24,12 +24,14 @@ import { AdminUsers } from "./pages/AdminUsers";
 import { AdminUpgrades } from "./pages/AdminUpgrades";
 import { AdminPricing } from "./pages/AdminPricing";
 import { AdminRevenue } from "./pages/AdminRevenue";
+import { AdminProfile } from "./pages/AdminProfile";
 import { Dashboard } from "./pages/Dashboard";
 import { Transactions } from "./pages/Transactions";
 import { Accounts } from "./pages/Accounts";
 import { Goals } from "./pages/Goals";
 import { Analytics } from "./pages/Analytics";
 import { Profile } from "./pages/Profile";
+import { Debts } from "./pages/Debts";
 import { InvoiceGenerator } from "./pages/InvoiceGenerator";
 import { ThemeToggle } from "./components/ThemeToggle";
 
@@ -51,13 +53,14 @@ export default function App() {
 
               {/* User Routes */}
               {/* Admin Routes */}
-              <Route element={<ProtectedRoute allowedRoles={["superadmin"]} />}>
+              <Route element={<ProtectedRoute allowedRoles={["superadmin", "admin"]} />}>
                 <Route element={<AdminLayout />}>
                   <Route path="/admin/dashboard" element={<AdminDashboard />} />
                   <Route path="/admin/users" element={<AdminUsers />} />
                   <Route path="/admin/upgrades" element={<AdminUpgrades />} />
                   <Route path="/admin/pricing" element={<AdminPricing />} />
                   <Route path="/admin/revenue" element={<AdminRevenue />} />
+                  <Route path="/admin/profile" element={<AdminProfile />} />
                 </Route>
               </Route>
 
@@ -75,6 +78,7 @@ export default function App() {
                   />
                   <Route path="/dashboard/goals" element={<Goals />} />
                   <Route path="/dashboard/analytics" element={<Analytics />} />
+                  <Route path="/dashboard/debts" element={<Debts />} />
                   <Route path="/dashboard/invoice" element={<InvoiceGenerator />} />
                   <Route path="/dashboard/profile" element={<Profile />} />
                 </Route>

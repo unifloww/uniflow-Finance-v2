@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Briefcase,
   FileText,
+  ClipboardList
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { motion, AnimatePresence } from 'motion/react';
@@ -33,6 +34,7 @@ export function UserLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileAddMenuOpen, setIsMobileAddMenuOpen] = useState(false);
   const isDashboard = location.pathname === '/dashboard';
   const themeColor = activeWorkspace === 'business' ? '#0891b2' : '#059669'; // cyan-600 vs emerald-600
   const themeClasses = activeWorkspace === 'business' 
@@ -125,6 +127,7 @@ export function UserLayout() {
     { name: 'Akun', path: '/dashboard/accounts', icon: Wallet },
     { name: activeWorkspace === 'business' ? 'Target Usaha' : 'Impian', path: '/dashboard/goals', icon: Target },
     { name: 'Analitik', path: '/dashboard/analytics', icon: PieChart },
+    { name: 'Utang & Piutang', path: '/dashboard/debts', icon: ClipboardList },
     { name: 'Profil', path: '/dashboard/profile', icon: User },
   ];
 
@@ -164,7 +167,7 @@ export function UserLayout() {
         
         <div className="flex h-[calc(100vh-8rem)] flex-col justify-between p-4">
           <nav className="space-y-2 relative">
-            {[...navItems.slice(0, 5), ...(activeWorkspace === 'business' ? [{ name: 'Invoice', path: '/dashboard/invoice', icon: FileText }] : []), navItems[5]].map((item) => {
+            {[...navItems.slice(0, navItems.length - 1), ...(activeWorkspace === 'business' ? [{ name: 'Invoice', path: '/dashboard/invoice', icon: FileText }] : []), navItems[navItems.length - 1]].map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
               return (
@@ -313,15 +316,61 @@ export function UserLayout() {
             );
           })}
           
-          {/* Soft UI Central Floating Button */}
-          <button
-            onClick={() => navigate('/dashboard/transactions', { state: { openAdd: true } })}
-            className="flex flex-col items-center justify-center -mt-10 relative z-50 transition-transform active:scale-90"
-          >
-            <div className={`h-16 w-16 rounded-full bg-white dark:bg-slate-800 shadow-[0_12px_24px_-8px_rgba(0,0,0,0.3)] flex items-center justify-center ${themeClasses.textActive} border-[5px] ${themeClasses.borderActive} ring-1 ${themeClasses.ringActive}`}>
-              <Plus className="h-7 w-7" strokeWidth={3} />
-            </div>
-          </button>
+          {/* Soft UI Central Floating Button & Menu */}
+          <div className="relative flex flex-col items-center justify-center -mt-10 z-50">
+            <AnimatePresence>
+              {isMobileAddMenuOpen && (
+                <>
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setIsMobileAddMenuOpen(false)}
+                    className="fixed inset-0 bg-black/40 backdrop-blur-sm -z-10"
+                  />
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                    className="absolute bottom-[80px] flex flex-col gap-3 items-end right-[-30px]"
+                  >
+                    <button 
+                      onClick={() => {
+                        setIsMobileAddMenuOpen(false);
+                        navigate('/dashboard/debts');
+                      }}
+                      className="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-3 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 active:scale-95 transition-transform"
+                    >
+                      <span className="font-bold text-sm text-slate-700 dark:text-slate-200">Utang Piutang</span>
+                      <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/30 flex items-center justify-center">
+                        <ClipboardList className="w-5 h-5" />
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setIsMobileAddMenuOpen(false);
+                        navigate('/dashboard/transactions', { state: { openAdd: true } });
+                      }}
+                      className="flex items-center gap-3 bg-white dark:bg-slate-800 px-4 py-3 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 active:scale-95 transition-transform"
+                    >
+                      <span className="font-bold text-sm text-slate-700 dark:text-slate-200">Catat Transaksi</span>
+                      <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 flex items-center justify-center">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+            <button
+              onClick={() => setIsMobileAddMenuOpen(!isMobileAddMenuOpen)}
+              className={`transition-transform active:scale-90 ${isMobileAddMenuOpen ? 'rotate-45' : 'rotate-0'}`}
+            >
+              <div className={`h-16 w-16 rounded-full bg-white dark:bg-slate-800 shadow-[0_12px_24px_-8px_rgba(0,0,0,0.3)] flex items-center justify-center ${themeClasses.textActive} border-[5px] ${themeClasses.borderActive} ring-1 ${themeClasses.ringActive}`}>
+                <Plus className="h-7 w-7 transition-transform" strokeWidth={3} />
+              </div>
+            </button>
+          </div>
 
           {[navItems[3], navItems[4]].map((item) => {
             const Icon = item.icon;

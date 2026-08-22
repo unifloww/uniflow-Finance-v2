@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "../components/ui/card";
-import { Edit2, Trash2, Shield, User, Search, AlertCircle } from "lucide-react";
-import { UserProfile } from "../contexts/AuthContext";
+import { Edit2, Trash2, Shield, User, Search, AlertCircle, MailPlus, X, Sliders, Check } from "lucide-react";
+import { UserProfile, useAuth } from "../contexts/AuthContext";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -11,12 +11,33 @@ interface EnrichedUser extends UserProfile {
   totalTransactions: number;
 }
 
+const AVAILABLE_PERMISSIONS = [
+  { id: 'view_reports', label: 'Lihat Laporan', desc: 'Dapat melihat halaman pendapatan dan analitik keuangan' },
+  { id: 'manage_users', label: 'Kelola Pengguna', desc: 'Dapat mengundang, mengedit, dan menghapus pengguna' },
+  { id: 'manage_pricing', label: 'Harga & Paket', desc: 'Dapat mengubah harga paket langganan' },
+  { id: 'edit_billing', label: 'Kelola Pembayaran', desc: 'Dapat mengelola upgrade dan pembayaran user' },
+];
+
 export function AdminUsers() {
+  const { currentUser } = useAuth();
   const [users, setUsers] = useState<EnrichedUser[]>([]);
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+
+  // Invite state
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<'admin' | 'superadmin'>("admin");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState("");
+
+  // Permissions state
+  const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false);
+  const [selectedUserForPermissions, setSelectedUserForPermissions] = useState<EnrichedUser | null>(null);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [permissionsSaving, setPermissionsSaving] = useState(false);
 
   useEffect(() => {
     const q = searchParams.get("q");
@@ -32,10 +53,10 @@ export function AdminUsers() {
       const { db } = await import('../lib/firebase');
       
       const querySnapshot = await getDocs(collection(db, "users"));
-      const enrichedUsers = [];
+      const enrichedUsers: EnrichedUser[] = [];
       
       querySnapshot.forEach((doc) => {
-        const u = doc.data();
+        const u = doc.data() as UserProfile;
         enrichedUsers.push({
           ...u,
           totalBalance: 0, // Mock for now to save reads, or calculate if needed
@@ -49,51 +70,144 @@ export function AdminUsers() {
     }
   };
 
-
   useEffect(() => {
     loadUsers();
   }, []);
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (userToDelete) {
-      const dbStr = localStorage.getItem("uniflow_users_db");
-      if (dbStr) {
-        const db = JSON.parse(dbStr);
-        const user = db[userToDelete];
-        if (user) {
-           localStorage.removeItem(`uniflow_transactions_${user.id}`);
-        }
-        delete db[userToDelete];
-        localStorage.setItem("uniflow_users_db", JSON.stringify(db));
+      try {
+        const { doc, deleteDoc } = await import('firebase/firestore');
+        const { db } = await import('../lib/firebase');
+        await deleteDoc(doc(db, "users", userToDelete));
+        // Real deletion of user via auth is complex client-side, typically needs Cloud Function
         loadUsers();
+      } catch (e) {
+        console.error(e);
       }
       setUserToDelete(null);
     }
   };
 
-  const handleToggleStatus = (email: string, currentStatus: string) => {
+  const handleToggleStatus = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    const dbStr = localStorage.getItem("uniflow_users_db");
-    if (dbStr) {
-      const db = JSON.parse(dbStr);
-      if (db[email]) {
-        db[email].status = newStatus;
-        localStorage.setItem("uniflow_users_db", JSON.stringify(db));
-        loadUsers();
-      }
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      await updateDoc(doc(db, "users", userId), { status: newStatus });
+      loadUsers();
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const handleToggleRole = (email: string, currentRole: string) => {
-    const newRole = currentRole === 'user' ? 'superadmin' : 'user';
-    const dbStr = localStorage.getItem("uniflow_users_db");
-    if (dbStr) {
-      const db = JSON.parse(dbStr);
-      if (db[email]) {
-        db[email].role = newRole;
-        localStorage.setItem("uniflow_users_db", JSON.stringify(db));
+  const handleToggleRole = async (userId: string, currentRole: string) => {
+    // Cycle between user -> admin -> superadmin -> user
+    let newRole = 'user';
+    if (currentRole === 'user') newRole = 'admin';
+    else if (currentRole === 'admin') newRole = 'superadmin';
+    
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      await updateDoc(doc(db, "users", userId), { role: newRole });
+      loadUsers();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail) return;
+    
+    setInviteLoading(true);
+    setInviteMessage("");
+    
+    try {
+      const { collection, addDoc, doc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      
+      // Check if user is already registered in the list we have
+      const existingUser = users.find(u => u.email.toLowerCase() === inviteEmail.toLowerCase());
+      
+      if (existingUser) {
+        // Just update role
+        await updateDoc(doc(db, "users", existingUser.id), { role: inviteRole });
+        setInviteMessage(`Pengguna sudah terdaftar. Role berhasil diperbarui menjadi ${inviteRole}.`);
         loadUsers();
+      } else {
+        // Create invitation
+        await addDoc(collection(db, "invitations"), {
+          email: inviteEmail.toLowerCase(),
+          role: inviteRole,
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          invitedBy: currentUser?.email || 'admin'
+        });
+
+        // Send Email Invitation Link via Firebase Auth
+        const { sendSignInLinkToEmail } = await import('firebase/auth');
+        const { auth } = await import('../lib/firebase');
+        
+        const actionCodeSettings = {
+          url: `${window.location.origin}/register?email=${encodeURIComponent(inviteEmail.toLowerCase())}`,
+          handleCodeInApp: true,
+        };
+        
+        await sendSignInLinkToEmail(auth, inviteEmail.toLowerCase(), actionCodeSettings);
+        // We set the email in localStorage to help with sign in on the other end, 
+        // though since it's a different browser, the other user will have to type it again or we extract it from URL.
+
+        setInviteMessage(`Undangan berhasil dikirim ke ${inviteEmail}. Email undangan telah dikirimkan secara otomatis.`);
       }
+      
+      setTimeout(() => {
+        setIsInviteModalOpen(false);
+        setInviteEmail("");
+        setInviteMessage("");
+      }, 3000);
+      
+    } catch (error) {
+      console.error("Error inviting admin:", error);
+      setInviteMessage("Terjadi kesalahan saat mengundang admin.");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleOpenPermissions = (user: EnrichedUser) => {
+    setSelectedUserForPermissions(user);
+    setSelectedPermissions(user.permissions || []);
+    setIsPermissionsModalOpen(true);
+  };
+
+  const handleTogglePermission = (permissionId: string) => {
+    setSelectedPermissions(prev => 
+      prev.includes(permissionId) 
+        ? prev.filter(id => id !== permissionId)
+        : [...prev, permissionId]
+    );
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedUserForPermissions) return;
+    
+    setPermissionsSaving(true);
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../lib/firebase');
+      
+      await updateDoc(doc(db, "users", selectedUserForPermissions.id), { 
+        permissions: selectedPermissions 
+      });
+      
+      setIsPermissionsModalOpen(false);
+      loadUsers();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPermissionsSaving(false);
     }
   };
 
@@ -157,19 +271,101 @@ export function AdminUsers() {
           </p>
         </div>
         
-        <div className="relative w-full sm:w-72">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-slate-400" />
+        <div className="flex w-full sm:w-auto items-center gap-3">
+          <div className="relative w-full sm:w-72">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl leading-5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 sm:text-sm transition-colors shadow-sm"
+              placeholder="Cari user berdasarkan nama atau email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2.5 border border-transparent rounded-xl leading-5 bg-white/10 text-emerald-50 placeholder-emerald-100/50 focus:outline-none focus:bg-white focus:text-slate-900 focus:placeholder-slate-400 sm:text-sm transition-colors shadow-inner"
-            placeholder="Cari user berdasarkan nama atau email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <button
+            onClick={() => setIsInviteModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-indigo-600/20 whitespace-nowrap"
+          >
+            <MailPlus className="h-5 w-5" />
+            <span className="hidden sm:inline">Undang Admin</span>
+          </button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {isInviteModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md"
+            >
+              <Card className="rounded-[2rem] shadow-2xl border-0 overflow-hidden bg-white dark:bg-slate-900 relative">
+                <button 
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="p-6 sm:p-8">
+                  <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-2xl flex items-center justify-center mb-6">
+                    <MailPlus className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Undang Pengelola</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                    Kirim undangan untuk menjadi admin. Mereka akan otomatis mendapatkan hak akses saat mendaftar.
+                  </p>
+
+                  <form onSubmit={handleInvite} className="space-y-4">
+                    {inviteMessage && (
+                      <div className="p-3 text-sm rounded-xl font-medium bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+                        {inviteMessage}
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Alamat Email</label>
+                      <input
+                        type="email"
+                        required
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                        placeholder="email@contoh.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Hak Akses</label>
+                      <select
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value as 'admin' | 'superadmin')}
+                        className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                      >
+                        <option value="admin">Admin Biasa</option>
+                        <option value="superadmin">Super Admin</option>
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={inviteLoading}
+                      className="w-full mt-6 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors disabled:opacity-70 shadow-lg shadow-indigo-600/20"
+                    >
+                      {inviteLoading ? "Mengirim..." : "Kirim Undangan"}
+                    </button>
+                  </form>
+                </div>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Card className="rounded-[2rem] border-0 shadow-xl overflow-hidden bg-white dark:bg-slate-900">
         <div className="overflow-x-auto">
@@ -210,6 +406,8 @@ export function AdminUsers() {
                       <div className="flex items-center gap-1.5 text-xs">
                         {user.role === 'superadmin' ? (
                           <Shield className="w-3.5 h-3.5 text-indigo-500" />
+                        ) : user.role === 'admin' ? (
+                          <Shield className="w-3.5 h-3.5 text-blue-500" />
                         ) : (
                           <User className="w-3.5 h-3.5 text-slate-400" />
                         )}
@@ -232,24 +430,36 @@ export function AdminUsers() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      {(user.role === 'admin' || user.role === 'superadmin') && (
+                        <button
+                          onClick={() => handleOpenPermissions(user)}
+                          title="Atur Hak Akses"
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors"
+                        >
+                          <Sliders className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleToggleRole(user.id, user.role || 'user')}
                         title="Ubah Role"
-                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors"
+                        disabled={user.id === currentUser?.uid}
+                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
                       >
                         <Shield className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleToggleStatus(user.id, user.status || 'active')}
                         title={user.status === 'active' ? 'Suspend' : 'Aktifkan'}
-                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-full transition-colors"
+                        disabled={user.id === currentUser?.uid}
+                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-full transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => setUserToDelete(user.id)}
                         title="Hapus"
-                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-full transition-colors"
+                        disabled={user.id === currentUser?.uid}
+                        className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-full transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -271,6 +481,81 @@ export function AdminUsers() {
           </table>
         </div>
       </Card>
+
+      <AnimatePresence>
+        {isPermissionsModalOpen && selectedUserForPermissions && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md"
+            >
+              <Card className="rounded-[2rem] shadow-2xl border-0 overflow-hidden bg-white dark:bg-slate-900 relative">
+                <button 
+                  onClick={() => setIsPermissionsModalOpen(false)}
+                  className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="p-6 sm:p-8">
+                  <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-2xl flex items-center justify-center mb-6">
+                    <Sliders className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Atur Hak Akses</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+                    Sesuaikan akses spesifik untuk admin <strong>{selectedUserForPermissions.name}</strong>.
+                  </p>
+
+                  <div className="space-y-3 mb-6">
+                    {AVAILABLE_PERMISSIONS.map(permission => {
+                      const isSelected = selectedPermissions.includes(permission.id);
+                      return (
+                        <div 
+                          key={permission.id}
+                          onClick={() => handleTogglePermission(permission.id)}
+                          className={`flex items-start gap-3 p-4 rounded-xl cursor-pointer border-2 transition-colors ${
+                            isSelected 
+                              ? 'border-blue-600 bg-blue-50/50 dark:border-blue-500 dark:bg-blue-900/20' 
+                              : 'border-slate-100 bg-white hover:border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'
+                          }`}
+                        >
+                          <div className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded flex items-center justify-center transition-colors ${
+                            isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600'
+                          }`}>
+                            {isSelected && <Check className="w-3.5 h-3.5" />}
+                          </div>
+                          <div>
+                            <div className={`text-sm font-bold ${isSelected ? 'text-blue-900 dark:text-blue-100' : 'text-slate-700 dark:text-slate-300'}`}>
+                              {permission.label}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1">
+                              {permission.desc}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={handleSavePermissions}
+                    disabled={permissionsSaving}
+                    className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors disabled:opacity-70 shadow-lg shadow-blue-600/20"
+                  >
+                    {permissionsSaving ? "Menyimpan..." : "Simpan Perubahan"}
+                  </button>
+                </div>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
