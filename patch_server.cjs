@@ -1,36 +1,31 @@
 const fs = require('fs');
 let code = fs.readFileSync('server.ts', 'utf8');
 
-// Just remove the midtrans initialization and route
-code = code.replace(/import midtransClient[\s\S]*?console\.log\(\`Server running on http:\/\/localhost:\$\{PORT\}\`\);\n\}/, 
-`
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+code = code.replace(
+  'const snap = new midtransClient.Snap({',
+  `const serverKey = process.env.MIDTRANS_SERVER_KEY || "";
+  const isProduction = !serverKey.includes("SB-");
+  
+  const snap = new midtransClient.Snap({`
+);
 
-  // API routes FIRST
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
-  });
+code = code.replace(
+  'isProduction: true,',
+  'isProduction: isProduction,'
+);
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
+code = code.replace(
+  'serverKey: process.env.MIDTRANS_SERVER_KEY || "",',
+  'serverKey: serverKey,'
+);
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(\`Server running on http://localhost:\${PORT}\`);
-  });
-}`);
+code = code.replace(
+  'const { orderId, grossAmount, customerName, customerEmail } = req.body;',
+  `const { orderId, grossAmount, customerName, customerEmail } = req.body;
+      
+      if (!serverKey) {
+        return res.status(500).json({ error: "MIDTRANS_SERVER_KEY belum dikonfigurasi di Environment Variables server." });
+      }`
+);
 
 fs.writeFileSync('server.ts', code);

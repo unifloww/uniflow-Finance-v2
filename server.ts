@@ -15,15 +15,22 @@ async function startServer() {
   app.use(express.json());
 
   // Using environment variables for Midtrans keys
+  const serverKey = process.env.MIDTRANS_SERVER_KEY || "";
+  const isProduction = !serverKey.includes("SB-");
+  
   const snap = new midtransClient.Snap({
-    isProduction: true,
-    serverKey: process.env.MIDTRANS_SERVER_KEY || "",
-    clientKey: process.env.VITE_MIDTRANS_CLIENT_KEY || "",
+    isProduction: isProduction,
+    serverKey: serverKey,
+    clientKey: process.env.VITE_MIDTRANS_CLIENT_KEY || "Mid-client-dvk7Kr5qta3e3UHy",
   });
 
   app.post("/api/midtrans/token", async (req, res) => {
     try {
       const { orderId, grossAmount, customerName, customerEmail } = req.body;
+      
+      if (!serverKey) {
+        return res.status(500).json({ error: "MIDTRANS_SERVER_KEY belum dikonfigurasi di Environment Variables server." });
+      }
       
       const parameter = {
         transaction_details: {
