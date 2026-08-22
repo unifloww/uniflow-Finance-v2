@@ -405,7 +405,7 @@ export function UserLayout() {
       </motion.button>
 
       {/* Trial Expired Overlay */}
-      {isTrialExpired && (
+      {isTrialExpired && location.pathname !== '/dashboard/profile' && (
         <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
           <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
