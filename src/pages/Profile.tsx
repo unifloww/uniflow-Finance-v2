@@ -317,10 +317,17 @@ export function Profile() {
           customerEmail: userProfile?.email || currentUser.email || "user@example.com"
         })
       });
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        const text = await response.text();
+        console.error("Non-JSON response from server:", text.substring(0, 200));
+        throw new Error("Server tidak mengembalikan format data yang valid. (Cek log console)");
+      }
       
-      if (!data.token) {
-        throw new Error("Gagal mengambil token pembayaran");
+      if (!response.ok || !data.token) {
+        throw new Error(data.error || "Gagal mengambil token pembayaran dari server (Cek Konfigurasi Midtrans)");
       }
 
       // Ensure snap is available (we need to inject the script if not present)
@@ -332,7 +339,7 @@ export function Profile() {
           }
           const script = document.createElement('script');
           script.src = "https://app.midtrans.com/snap/snap.js";
-          script.setAttribute('data-client-key', import.meta.env.VITE_MIDTRANS_CLIENT_KEY || "");
+          script.setAttribute('data-client-key', import.meta.env.VITE_MIDTRANS_CLIENT_KEY || "Mid-client-dvk7Kr5qta3e3UHy");
           script.onload = () => resolve(true);
           document.body.appendChild(script);
         });
@@ -362,7 +369,7 @@ export function Profile() {
       });
     } catch (error) {
       console.error(error);
-      alert("Terjadi kesalahan saat memproses pembayaran otomatis.");
+      alert(`Terjadi kesalahan pembayaran: ${error.message || "Gagal terhubung ke server"}`);
       setIsProcessingMidtrans(false);
     }
   };
