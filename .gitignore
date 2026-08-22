@@ -7,6 +7,3 @@ coverage/
 .env*
 !.env.example
 
-# Exclude backend server file from repository
-server.ts
-dist/server.cjs

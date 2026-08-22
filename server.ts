@@ -1,60 +1,46 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
+import cors from "cors";
 import midtransClient from "midtrans-client";
+import { createServer as createViteServer } from "vite";
+import dotenv from "dotenv";
 
-// Midtrans client akan diinisialisasi secara lazy
-let snapClient: any = null;
-
-function getSnapClient() {
-  if (!snapClient) {
-    const serverKey = process.env.MIDTRANS_SERVER_KEY;
-    if (!serverKey) {
-      throw new Error('MIDTRANS_SERVER_KEY environment variable is required');
-    }
-    
-    snapClient = new midtransClient.Snap({
-        isProduction: false,
-        serverKey: serverKey,
-        clientKey: process.env.MIDTRANS_CLIENT_KEY || 'Mid-client-dvk7Kr5qta3e3UHy'
-    });
-  }
-  return snapClient;
-}
+dotenv.config();
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
-  
+
+  app.use(cors());
   app.use(express.json());
 
-  // API routes FIRST
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+  // Using environment variables for Midtrans keys
+  const snap = new midtransClient.Snap({
+    isProduction: true,
+    serverKey: process.env.MIDTRANS_SERVER_KEY || "",
+    clientKey: process.env.VITE_MIDTRANS_CLIENT_KEY || "",
   });
 
-  app.post("/api/payment/token", async (req, res) => {
+  app.post("/api/midtrans/token", async (req, res) => {
     try {
-      const { order_id, gross_amount, customer_details, item_details } = req.body;
+      const { orderId, grossAmount, customerName, customerEmail } = req.body;
       
       const parameter = {
         transaction_details: {
-          order_id: order_id || `ORDER-${new Date().getTime()}`,
-          gross_amount: gross_amount
+          order_id: orderId || `UNIFLOW-${Date.now()}`,
+          gross_amount: grossAmount,
         },
-        credit_card: {
-          secure: true
+        customer_details: {
+          first_name: customerName || "User",
+          email: customerEmail || "user@example.com",
         },
-        customer_details: customer_details,
-        item_details: item_details
       };
 
-      const snap = getSnapClient();
       const transaction = await snap.createTransaction(parameter);
       res.json({ token: transaction.token, redirect_url: transaction.redirect_url });
-    } catch (e: any) {
-      console.error("Midtrans Error:", e);
-      res.status(500).json({ error: e.message });
+    } catch (error: any) {
+      console.error("Midtrans Error:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -66,10 +52,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
