@@ -1,35 +1,42 @@
 const fs = require('fs');
-
 let code = fs.readFileSync('src/components/UserLayout.tsx', 'utf8');
 
-// Insert the dashboard background condition
-if (!code.includes('isDashboard')) {
-  code = code.replace(
-    'const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);',
-    'const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);\n  const isDashboard = location.pathname === \'/dashboard\';'
-  );
-}
+const targetContent = `
+            {!isSidebarCollapsed && trialRemaining && (
+`;
 
-const mainContentStr = '<main className={`flex flex-1 flex-col overflow-y-auto overflow-x-hidden pt-20 lg:pt-0 transition-all duration-300 ${isSidebarCollapsed ? \'lg:pl-20\' : \'lg:pl-64\'}`}>';
+const replacementContent = `
+            {!isSidebarCollapsed && (
+              <button
+                onClick={() => setActiveWorkspace(activeWorkspace === 'business' ? 'personal' : 'business')}
+                className="w-full flex items-center justify-between bg-white/10 hover:bg-white/20 p-3 rounded-xl mb-4 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={\`p-1.5 rounded-lg \${activeWorkspace === 'business' ? 'bg-cyan-500' : 'bg-emerald-500'}\`}>
+                    {activeWorkspace === 'business' ? <Briefcase className="h-4 w-4 text-white" /> : <User className="h-4 w-4 text-white" />}
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="text-[10px] text-white/70">Mode Workspace</span>
+                    <span className="text-xs font-bold text-white">{activeWorkspace === 'business' ? 'Bisnis' : 'Personal'}</span>
+                  </div>
+                </div>
+                <ArrowRightLeft className="h-3 w-3 text-white/50" />
+              </button>
+            )}
+            
+            {isSidebarCollapsed && (
+              <button
+                onClick={() => setActiveWorkspace(activeWorkspace === 'business' ? 'personal' : 'business')}
+                title="Ganti Workspace"
+                className="w-full flex justify-center mb-4 text-white/70 hover:text-white"
+              >
+                <ArrowRightLeft className="h-5 w-5" />
+              </button>
+            )}
 
-if (!code.includes('bg-gradient-to-b from-[#059669] to-[#047857] h-[360px]')) {
-  code = code.replace(
-    mainContentStr,
-    mainContentStr + '\n        {isDashboard && <div className="hidden lg:block absolute top-0 left-0 right-0 bg-[#059669] h-[340px] z-0 shadow-sm pointer-events-none" />}\n        <div className="relative z-10 flex flex-col flex-1 h-full">'
-  );
-  
-  // Close the relative wrapper
-  code = code.replace(
-    '      </main>',
-    '        </div>\n      </main>'
-  );
-}
+            {!isSidebarCollapsed && trialRemaining && (
+`;
 
-// Ensure header is relative z-20 so it sits above the green bg
-code = code.replace(
-  '<header className="hidden lg:flex sticky top-0 z-10',
-  '<header className="hidden lg:flex sticky top-0 z-20'
-);
-
+code = code.replace(targetContent, replacementContent);
 fs.writeFileSync('src/components/UserLayout.tsx', code);
-console.log('UserLayout patched for dashboard desktop bg');
+console.log("Patched UserLayout.tsx");

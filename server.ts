@@ -4,6 +4,8 @@ import cors from "cors";
 import midtransClient from "midtrans-client";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import { GoogleGenAI } from "@google/genai";
+
 
 dotenv.config();
 
@@ -48,6 +50,45 @@ async function startServer() {
     } catch (error: any) {
       console.error("Midtrans Error:", error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const { history, context, userApiKey } = req.body;
+      const apiKeyToUse = userApiKey || process.env.GEMINI_API_KEY;
+
+      if (!apiKeyToUse) {
+        throw new Error("API Key tidak ditemukan. Silakan atur API Key Anda di pengaturan.");
+      }
+      
+      const ai = new GoogleGenAI({ apiKey: apiKeyToUse });
+      
+      const contents = history.map((msg) => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+      }));
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.6-flash',
+        contents: contents,
+        config: {
+          systemInstruction: "Kamu adalah FIA (Finance Intelligence Assistant), asisten keuangan pintar, ramah, dan solutif dari Uniflow Finance. Berikan respon yang ringkas, jelas, dan menggunakan bahasa Indonesia yang baik. Berikut adalah konteks pengguna saat ini:\n\n" + context,
+        }
+      });
+      
+      res.json({ text: response.text });
+    } catch (error) {
+      console.error("AI Error:", error);
+      
+      const errorMessage = error.message || "Gagal menghubungi AI";
+      if (errorMessage.includes("429") || errorMessage.includes("depleted")) {
+        res.status(429).json({ error: "Kuota API Gemini Anda telah habis. Silakan periksa pengaturan billing di Google AI Studio." });
+      } else {
+        res.status(500).json({ error: errorMessage });
+      }
+  
     }
   });
 
