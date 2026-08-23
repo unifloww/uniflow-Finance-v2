@@ -72,7 +72,7 @@ export function AdminUpgrades() {
         let planEnd = null;
         let planType = 'pro';
         if (planName.toLowerCase().includes('selamanya')) {
-          planType = 'lifetime';
+          // Tetap 'pro', tetapi tanpa expiry
         } else if (planName.includes('1 Bulan')) {
           planEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
         } else if (planName.includes('1 Tahun')) {

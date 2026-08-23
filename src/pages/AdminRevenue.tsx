@@ -31,7 +31,7 @@ export function AdminRevenue() {
         const usersSnap = await getDocs(collection(db, "users"));
         let countPro = 0;
         usersSnap.forEach(doc => {
-          if (doc.data().plan === 'pro') countPro++;
+          if (['pro', '1_month', '1_year', 'lifetime'].includes(doc.data().plan)) countPro++;
         });
         setPenggunaPro(countPro);
 

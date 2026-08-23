@@ -360,7 +360,7 @@ export function Profile() {
       (window as any).snap.pay(data.token, {
         onSuccess: async function(result: any) {
           console.log("Midtrans payment success:", result);
-          await updateProfile({ plan: selectedPlan.planId });
+          await updateProfile({ plan: "pro", planId: selectedPlan.planId, planName: selectedPlan.planName });
           setPaymentModalOpen(false);
           alert("Pembayaran berhasil! Akun Anda telah di-upgrade.");
         },
@@ -454,12 +454,12 @@ export function Profile() {
                        <Clock className="h-4 w-4" /> Sisa: {trialRemaining.days} hari {trialRemaining.hours} jam
                      </span>
                   )}
-                  {planRemaining && userProfile?.plan === 'pro' && !userProfile?.planName?.toLowerCase().includes('selamanya') && (
+                  {planRemaining && ['pro', '1_month', '1_year'].includes(userProfile?.plan || '') && !userProfile?.planName?.toLowerCase().includes('selamanya') && (
                      <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
                        <Clock className="h-4 w-4" /> Sisa: {planRemaining.days} hari {planRemaining.hours} jam
                      </span>
                   )}
-                  {planRemaining && userProfile?.plan === 'pro' && !userProfile?.planName?.toLowerCase().includes('selamanya') && (
+                  {planRemaining && ['pro', '1_month', '1_year'].includes(userProfile?.plan || '') && !userProfile?.planName?.toLowerCase().includes('selamanya') && (
                      <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
                        <Clock className="h-4 w-4" /> Sisa: {planRemaining.days} hari {planRemaining.hours} jam
                      </span>

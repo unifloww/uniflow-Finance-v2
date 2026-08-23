@@ -4,7 +4,6 @@ import autoTable from "jspdf-autotable";
 import { Download, FileText, Activity } from "lucide-react";
 import { useData } from "../contexts/DataContext";
 import { useAuth } from "../contexts/AuthContext";
-import { GaugeMeter } from "../components/GaugeMeter";
 import {
   Card,
   CardContent,
@@ -513,44 +512,6 @@ export function Analytics() {
           </CardContent>
         </Card>
       )}
-
-      <div className="grid gap-6 md:grid-cols-3 mb-6">
-        <Card className="rounded-3xl border-0 shadow-md overflow-hidden bg-white dark:bg-slate-900 col-span-1 md:col-span-3 lg:col-span-3">
-          <CardHeader className="border-b border-slate-100 dark:border-slate-800 pb-4">
-            <div className="flex items-center gap-2">
-               <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
-                 <Activity className="w-4 h-4 text-emerald-600" />
-               </div>
-               <CardTitle>Skor Kesehatan Keuangan (Financial Health Score)</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col md:flex-row items-center justify-center pt-6 gap-8">
-            <div className="w-full md:w-1/2 lg:w-1/3 flex justify-center">
-              <GaugeMeter score={healthScore} />
-            </div>
-            <div className="w-full md:w-1/2 flex flex-col gap-6">
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl flex justify-between items-center border border-slate-100 dark:border-slate-700/50">
-                <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Savings Rate</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Porsi pendapatan yang ditabung</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{savingsRate.toFixed(1)}%</p>
-                </div>
-              </div>
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl flex justify-between items-center border border-slate-100 dark:border-slate-700/50">
-                <div>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Debt-to-Income Ratio</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">Rasio hutang terhadap pendapatan</p>
-                </div>
-                <div className="text-right">
-                  <p className={`text-2xl font-black ${debtToIncomeRatio > 40 ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}`}>{debtToIncomeRatio.toFixed(1)}%</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="rounded-3xl border-0 shadow-md overflow-hidden bg-white dark:bg-slate-900">

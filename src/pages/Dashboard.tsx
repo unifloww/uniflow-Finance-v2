@@ -331,7 +331,7 @@ export function Dashboard() {
             </h3>
           </div>
 
-          {userProfile?.plan === 'pro' ? (
+          {['pro', '1_month', '1_year', 'lifetime'].includes(userProfile?.plan || '') ? (
             <span className="relative z-10 text-xs sm:text-sm font-black tracking-wider text-white uppercase drop-shadow-sm bg-white/20 px-3 py-1 rounded-full border border-white/30 backdrop-blur-sm">
               PRO
             </span>
