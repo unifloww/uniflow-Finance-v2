@@ -875,11 +875,22 @@ export function Dashboard() {
 
       {/* Desktop Cards Grid */}
       {activeWorkspace === 'business' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white dark:bg-slate-900 border-t-4 border-t-cyan-500">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-slate-900 dark:bg-slate-950 border-t-4 border-t-cyan-500 text-white">
+            <div className="text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Nilai Bisnis Bersih</div>
+            <div className="flex justify-between items-start">
+               <h2 className="text-base lg:text-sm xl:text-lg font-black tracking-tighter">{hideBalances ? "••••••" : formatCurrency(netWorth)}</h2>
+               <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5 text-white" />
+               </div>
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 mt-4">Aset dikurangi hutang</p>
+          </Card>
+          
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white dark:bg-slate-900">
             <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Kas & Likuid</div>
             <div className="flex justify-between items-start">
-              <h2 className="text-3xl font-black text-slate-900 dark:text-white">{hideBalances ? "••••••" : formatCurrency(totalBalance)}</h2>
+              <h2 className="text-base lg:text-sm xl:text-lg font-black text-slate-900 dark:text-white tracking-tighter">{hideBalances ? "••••••" : formatCurrency(totalBalance)}</h2>
               <div className="w-10 h-10 rounded-full bg-cyan-50 flex items-center justify-center shrink-0">
                 <Wallet className="w-5 h-5 text-cyan-600" />
               </div>
@@ -915,7 +926,7 @@ export function Dashboard() {
           <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white dark:bg-slate-900">
              <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Piutang (Hutang Klien)</div>
              <div className="flex justify-between items-start">
-               <h2 className="text-3xl font-black text-indigo-600">{hideBalances ? "••••••" : formatCurrency(receivable)}</h2>
+               <h2 className="text-base lg:text-sm xl:text-lg font-black text-indigo-600 tracking-tighter">{hideBalances ? "••••••" : formatCurrency(receivable)}</h2>
                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
                   <ArrowRightLeft className="w-5 h-5 text-indigo-500" />
                </div>
@@ -926,7 +937,7 @@ export function Dashboard() {
           <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white dark:bg-slate-900">
              <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Hutang Bisnis</div>
              <div className="flex justify-between items-start">
-               <h2 className="text-3xl font-black text-amber-600">{hideBalances ? "••••••" : formatCurrency(payable)}</h2>
+               <h2 className="text-base lg:text-sm xl:text-lg font-black text-amber-600 tracking-tighter">{hideBalances ? "••••••" : formatCurrency(payable)}</h2>
                <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
                   <Activity className="w-5 h-5 text-amber-500" />
                </div>
@@ -935,11 +946,22 @@ export function Dashboard() {
           </Card>
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-5 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+          <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-slate-900 dark:bg-slate-950 text-white">
+            <div className="text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Kekayaan Bersih</div>
+            <div className="flex justify-between items-start">
+               <h2 className="text-base lg:text-sm xl:text-lg font-black tracking-tighter">{hideBalances ? "••••••" : formatCurrency(netWorth)}</h2>
+               <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-5 h-5 text-white" />
+               </div>
+            </div>
+            <p className="text-[11px] font-bold text-slate-400 mt-4">Aset dikurangi hutang</p>
+          </Card>
+
           <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
             <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Kas & Likuid</div>
             <div className="flex justify-between items-start">
-               <h2 className="text-3xl font-black text-slate-900">{hideBalances ? "••••••" : formatCurrency(totalBalance)}</h2>
+               <h2 className="text-base lg:text-sm xl:text-lg font-black text-slate-900 tracking-tighter">{hideBalances ? "••••••" : formatCurrency(totalBalance)}</h2>
                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
                   <Wallet className="w-5 h-5 text-indigo-500" />
                </div>
@@ -950,7 +972,7 @@ export function Dashboard() {
           <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
             <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Pemasukan</div>
             <div className="flex justify-between items-start">
-               <h2 className="text-3xl font-black text-[#059669]">{hideBalances ? "••••••" : formatCurrency(income)}</h2>
+               <h2 className="text-base lg:text-sm xl:text-lg font-black text-[#059669] tracking-tighter">{hideBalances ? "••••••" : formatCurrency(income)}</h2>
                <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
                   <TrendingUp className="w-5 h-5 text-[#059669]" />
                </div>
@@ -961,7 +983,7 @@ export function Dashboard() {
           <Card className="rounded-[1.5rem] border-0 shadow-lg p-5 bg-white">
             <div className="text-[11px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Pengeluaran</div>
             <div className="flex justify-between items-start">
-               <h2 className="text-3xl font-black text-rose-600">{hideBalances ? "••••••" : formatCurrency(expense)}</h2>
+               <h2 className="text-base lg:text-sm xl:text-lg font-black text-rose-600 tracking-tighter">{hideBalances ? "••••••" : formatCurrency(expense)}</h2>
                <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
                   <TrendingDown className="w-5 h-5 text-rose-600" />
                </div>
@@ -972,7 +994,7 @@ export function Dashboard() {
           <Card className="rounded-[1.5rem] border-0 shadow-lg bg-[#047857] text-white p-5">
             <div className="text-[11px] font-bold text-emerald-200 mb-2 uppercase tracking-wider">Cashflow</div>
             <div className="flex justify-between items-start">
-               <h2 className="text-3xl font-black">{hideBalances ? "••••••" : formatCurrency(income - expense)}</h2>
+               <h2 className="text-base lg:text-sm xl:text-lg font-black tracking-tighter">{hideBalances ? "••••••" : formatCurrency(income - expense)}</h2>
                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                   <Activity className="w-5 h-5 text-white" />
                </div>
